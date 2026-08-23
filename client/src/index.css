@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid #16213a;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* "Fill-in-the-blank" worksheet-style input: underline only, label floats above */
+  .field-line {
+    @apply w-full bg-transparent border-0 border-b-2 border-paper-line
+      py-2 text-ink placeholder-transparent
+      focus:border-highlighter-deep focus:outline-none
+      transition-colors duration-150;
+  }
+
+  .field-label {
+    @apply block font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint mb-1;
+  }
+
+  .field-error {
+    @apply mt-1.5 text-sm text-flag;
+  }
+
+  .btn-primary {
+    @apply relative inline-flex w-full items-center justify-center gap-2
+      rounded-sm bg-ink px-5 py-3 font-body text-sm font-semibold text-paper
+      transition-colors duration-150 hover:bg-ink-soft
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply relative inline-flex w-full items-center justify-center gap-2
+      rounded-sm border-2 border-paper-line bg-paper-card px-5 py-3 font-body text-sm font-semibold text-ink
+      transition-colors duration-150 hover:border-ink
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .auth-card {
+    @apply w-full max-w-md rounded-sm border border-paper-line bg-paper-card p-8 sm:p-10 shadow-[0_1px_0_0_#E1E6E3,0_20px_40px_-24px_rgba(22,33,58,0.25)];
+  }
+}
