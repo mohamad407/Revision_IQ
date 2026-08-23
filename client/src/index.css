@@ -47,3 +47,73 @@
     @apply w-full max-w-md rounded-sm border border-paper-line bg-paper-card p-8 sm:p-10 shadow-[0_1px_0_0_#E1E6E3,0_20px_40px_-24px_rgba(22,33,58,0.25)];
   }
 }
+
+/* ---- Auth panel: ambient motion for the brand side ---- */
+@keyframes drift-slow {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(20px, -24px, 0) scale(1.08); }
+}
+@keyframes drift-slower {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-18px, 16px, 0) scale(1.1); }
+}
+@keyframes pan-grid {
+  0% { background-position: 0 0; }
+  100% { background-position: 44px 44px; }
+}
+@keyframes highlight-sweep {
+  0% { transform: scaleX(0); transform-origin: left; }
+  60% { transform: scaleX(1); transform-origin: left; }
+  100% { transform: scaleX(1); transform-origin: left; }
+}
+@keyframes float-a {
+  0%, 100% { transform: rotateY(18deg) rotateX(6deg) rotate(-4deg) translateY(0); }
+  50% { transform: rotateY(18deg) rotateX(6deg) rotate(-4deg) translateY(-10px); }
+}
+@keyframes float-b {
+  0%, 100% { transform: rotateY(-14deg) rotateX(-4deg) rotate(6deg) translateY(0); }
+  50% { transform: rotateY(-14deg) rotateX(-4deg) rotate(6deg) translateY(-16px); }
+}
+@keyframes float-c {
+  0%, 100% { transform: rotateY(10deg) rotateX(8deg) rotate(-2deg) translateY(0); }
+  50% { transform: rotateY(10deg) rotateX(8deg) rotate(-2deg) translateY(-8px); }
+}
+
+.animate-drift-slow { animation: drift-slow 9s ease-in-out infinite; }
+.animate-drift-slower { animation: drift-slower 12s ease-in-out infinite; }
+.animate-pan-grid { animation: pan-grid 6s linear infinite alternate; }
+.animate-highlight-sweep { animation: highlight-sweep 1.4s ease-out 0.3s both; }
+.animate-float-a { animation: float-a 5s ease-in-out infinite; }
+.animate-float-b { animation: float-b 6s ease-in-out infinite 0.4s; }
+.animate-float-c { animation: float-c 5.5s ease-in-out infinite 0.8s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-drift-slow, .animate-drift-slower, .animate-pan-grid,
+  .animate-highlight-sweep, .animate-float-a, .animate-float-b, .animate-float-c {
+    animation: none;
+  }
+}
+
+/* ---- Intro slides ---- */
+@keyframes slide-in {
+  0% { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes scene-in {
+  0% { opacity: 0; transform: scale(0.92) rotateY(-10deg) rotateX(6deg); }
+  100% { opacity: 1; transform: scale(1) rotateY(-10deg) rotateX(6deg); }
+}
+@keyframes scan-line {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(160px); }
+}
+
+.animate-slide-in { animation: slide-in 0.5s ease-out both; }
+.animate-scene-in { animation: scene-in 0.6s ease-out both; }
+.animate-scan-line { animation: scan-line 2.2s ease-in-out infinite alternate; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in, .animate-scene-in, .animate-scan-line {
+    animation: none;
+  }
+}
