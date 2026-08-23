@@ -1,0 +1,10 @@
+@"
+node_modules/
+.env
+.env.*
+!.env.example
+firebase-service-account.json
+*.log
+dist/
+build/
+"@ | Set-Content ".gitignore"
