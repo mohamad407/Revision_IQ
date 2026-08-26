@@ -181,3 +181,122 @@ text, no commentary.`;
 
   return result.response.text().trim();
 }
+
+/**
+ * generateModelPaper({ subject, syllabusText, pattern, pastPapersText })
+ * -> { cat1: PaperQuestion[], cat2: PaperQuestion[], fat: PaperQuestion[] }
+ *
+ * Unlike predictQuestions (which ranks likely questions), this assembles a
+ * complete, ready-to-practice paper per stage — every question the user's
+ * pattern calls for, numbered and marked, in exam format.
+ */
+export async function generateModelPaper({ subject, syllabusText, pattern, pastPapersText }) {
+  const stages = ['cat1', 'cat2', 'fat'];
+  const results = { cat1: [], cat2: [], fat: [] };
+
+  for (const stage of stages) {
+    const stagePattern = pattern?.[stage];
+    if (!stagePattern || !stagePattern.numQuestions) continue;
+
+    const label = stage === 'fat' ? 'FAT (Final Assessment Test)' : stage.toUpperCase();
+
+    const prompt = `You are writing a full model exam paper for ${label} in the
+subject "${subject}", to help a student practice under realistic conditions.
+
+EXAM PATTERN FOR ${label} (entered by the student — follow it exactly):
+- Number of questions: ${stagePattern.numQuestions}
+- Marks per question: ${stagePattern.marksPerQuestion || 'not specified'}
+- Question type: ${stagePattern.questionType || 'not specified'}
+- Topics/modules covered: ${stagePattern.topics || 'not specified'}
+- Additional notes: ${stagePattern.notes || 'none'}
+
+SYLLABUS:
+"""
+${truncate(syllabusText || 'No syllabus provided.')}
+"""
+
+PREVIOUS PAPERS (for style/difficulty reference only — do not copy questions verbatim):
+"""
+${truncate(pastPapersText || 'No previous papers provided.')}
+"""
+
+Return ONLY valid JSON (no markdown fences, no commentary): an array of
+exactly ${stagePattern.numQuestions} objects, numbered in order, shaped like:
+
+{
+  "number": 1,
+  "question": "the full question text, written in the requested question type/style",
+  "marks": ${stagePattern.marksPerQuestion || 10}
+}`;
+
+    try {
+      const result = await geminiModel.generateContent(prompt);
+      const parsed = parseJsonResponse(result.response.text());
+      if (Array.isArray(parsed)) {
+        results[stage] = parsed.filter((q) => q.question);
+      }
+    } catch {
+      results[stage] = [];
+    }
+  }
+
+  return results;
+}
+
+/**
+ * generateImportantTopics({ subject, syllabusText, pattern, pastPapersText })
+ * -> Array<{ topic, importance: 'high'|'medium'|'low', summary, modelAnswer }>
+ *
+ * A revision-focused output, independent of any single stage: the topics
+ * most worth studying across the whole subject, each with a short summary
+ * and a model answer the student can actually study from.
+ */
+export async function generateImportantTopics({ subject, syllabusText, pattern, pastPapersText }) {
+  const patternSummary = ['cat1', 'cat2', 'fat']
+    .map((s) => {
+      const p = pattern?.[s];
+      if (!p || !p.numQuestions) return null;
+      return `${s.toUpperCase()}: ${p.numQuestions} questions, ${p.marksPerQuestion || '?'} marks each, topics: ${p.topics || 'not specified'}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+
+  const prompt = `You are helping a student prioritize revision for the subject
+"${subject}" before their exams.
+
+SYLLABUS:
+"""
+${truncate(syllabusText || 'No syllabus provided.')}
+"""
+
+EXAM PATTERN (entered by the student):
+${patternSummary || 'Not specified.'}
+
+PREVIOUS PAPERS TEXT (use to judge which topics recur and matter most):
+"""
+${truncate(pastPapersText || 'No previous papers provided.')}
+"""
+
+Identify the 8-12 most important topics to study, ranked by how likely they
+are to matter for the exams. For each, write a short model answer a student
+could actually study and reproduce.
+
+Return ONLY valid JSON (no markdown fences, no commentary): an array of
+objects shaped like:
+
+{
+  "topic": "short topic name",
+  "importance": "high | medium | low",
+  "summary": "one sentence on why this topic matters / how often it appears",
+  "modelAnswer": "a concise, well-structured answer covering the core of this topic — a few sentences to a short paragraph"
+}`;
+
+  const result = await geminiModel.generateContent(prompt);
+  const parsed = parseJsonResponse(result.response.text());
+
+  if (!Array.isArray(parsed)) {
+    throw new Error('Gemini did not return a valid topics array.');
+  }
+
+  return parsed.filter((t) => t.topic && t.modelAnswer);
+}
