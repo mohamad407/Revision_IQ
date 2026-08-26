@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import documentRoutes from './routes/document.routes.js';
 import quizRoutes from './routes/quiz.routes.js';
+import predictorRoutes from './routes/predictor.routes.js';
 import { errorHandler } from './middleware/error.js';
 
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/quiz', quizRoutes);
+app.use('/api/predictor', predictorRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
