@@ -91,3 +91,71 @@ ${truncate(text)}
     .filter((q) => q.question && Array.isArray(q.options) && q.options.length === 4 && q.correctAnswer)
     .slice(0, 5);
 }
+
+/**
+ * predictQuestions({ subject, syllabusText, pattern, pastPapersText })
+ * -> { cat1: PredictedQuestion[], cat2: PredictedQuestion[], fat: PredictedQuestion[] }
+ *
+ * Cross-references the syllabus, the user-entered exam pattern for each
+ * stage, and the text of any uploaded previous papers to predict likely
+ * questions per stage. Runs one Gemini call per stage that has a pattern
+ * defined (numQuestions > 0) so each stage gets a focused prompt instead
+ * of one call trying to juggle all three at once.
+ */
+export async function predictQuestions({ subject, syllabusText, pattern, pastPapersText }) {
+  const stages = ['cat1', 'cat2', 'fat'];
+  const results = { cat1: [], cat2: [], fat: [] };
+
+  for (const stage of stages) {
+    const stagePattern = pattern?.[stage];
+    if (!stagePattern || !stagePattern.numQuestions) continue; // user didn't define this stage — skip it
+
+    const label = stage === 'fat' ? 'FAT (Final Assessment Test)' : stage.toUpperCase();
+
+    const prompt = `You are helping a student predict likely exam questions for
+${label} in the subject "${subject}".
+
+EXAM PATTERN FOR ${label} (entered by the student — follow it exactly):
+- Number of questions: ${stagePattern.numQuestions}
+- Marks per question: ${stagePattern.marksPerQuestion || 'not specified'}
+- Question type: ${stagePattern.questionType || 'not specified'}
+- Topics/modules covered: ${stagePattern.topics || 'not specified'}
+- Additional notes: ${stagePattern.notes || 'none'}
+
+SYLLABUS:
+"""
+${truncate(syllabusText || 'No syllabus provided.')}
+"""
+
+TEXT EXTRACTED FROM PREVIOUS SEMESTERS' PAPERS (may cover multiple stages —
+use it to spot recurring topics and question styles, not exact repeats):
+"""
+${truncate(pastPapersText || 'No previous papers provided.')}
+"""
+
+Return ONLY valid JSON (no markdown fences, no commentary): an array of
+exactly ${stagePattern.numQuestions} objects, each shaped like:
+
+{
+  "topic": "the module/topic this question is drawn from",
+  "question": "the predicted question, written in the requested question type/style",
+  "likelihood": "high | medium | low",
+  "reasoning": "one short sentence on why this topic is likely to appear"
+}`;
+
+    try {
+      const result = await geminiModel.generateContent(prompt);
+      const raw = result.response.text();
+      const parsed = parseJsonResponse(raw);
+      if (Array.isArray(parsed)) {
+        results[stage] = parsed.filter((q) => q.topic && q.question);
+      }
+    } catch (err) {
+      // One stage failing (e.g. Gemini hiccup) shouldn't take down the
+      // others — leave that stage empty and let the caller/UI surface it.
+      results[stage] = [];
+    }
+  }
+
+  return results;
+}
