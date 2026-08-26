@@ -11,6 +11,8 @@ import {
   uploadPastPaper,
   deletePastPaper,
   generatePrediction,
+  generateModelPaperForSession,
+  generateImportantTopicsForSession,
   deletePredictor,
 } from '../controllers/predictor.controller.js';
 
@@ -65,5 +67,21 @@ router.delete(
 );
 
 router.post('/:id/generate', requireAuth, [param('id').isMongoId()], validate, generatePrediction);
+
+router.post(
+  '/:id/model-paper',
+  requireAuth,
+  [param('id').isMongoId()],
+  validate,
+  generateModelPaperForSession
+);
+
+router.post(
+  '/:id/important-topics',
+  requireAuth,
+  [param('id').isMongoId()],
+  validate,
+  generateImportantTopicsForSession
+);
 
 export default router;
