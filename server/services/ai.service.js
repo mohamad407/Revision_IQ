@@ -159,3 +159,25 @@ exactly ${stagePattern.numQuestions} objects, each shaped like:
 
   return results;
 }
+
+/**
+ * extractTextFromImage(base64Data, mimeType) -> string
+ * Uses Gemini's vision capability to transcribe a photographed/scanned
+ * question paper directly — more reliable than traditional OCR for messy
+ * phone photos, and keeps every past-paper source going through one
+ * Gemini-backed pipeline instead of bolting on a separate OCR library.
+ */
+export async function extractTextFromImage(base64Data, mimeType) {
+  const prompt = `This image is a photo or scan of an exam question paper.
+Transcribe all the text you can read from it as plain text, preserving
+question numbers and structure as best you can. If parts are blurry or
+illegible, skip them rather than guessing. Return only the transcribed
+text, no commentary.`;
+
+  const result = await geminiModel.generateContent([
+    prompt,
+    { inlineData: { data: base64Data, mimeType } },
+  ]);
+
+  return result.response.text().trim();
+}
