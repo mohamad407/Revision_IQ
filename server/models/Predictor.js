@@ -15,6 +15,7 @@ const patternStageSchema = new mongoose.Schema(
 const pastPaperSchema = new mongoose.Schema(
   {
     fileName: { type: String, required: true },
+    mimeType: { type: String, default: 'application/pdf' }, // pdf or image/*
     stage: { type: String, enum: ['cat1', 'cat2', 'fat', 'unspecified'], default: 'unspecified' },
     cloudinaryUrl: { type: String, required: true },
     cloudinaryPublicId: { type: String, required: true },
