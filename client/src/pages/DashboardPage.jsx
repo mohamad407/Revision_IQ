@@ -220,13 +220,32 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Coming soon */}
+        {/* Question predictor */}
         <div className="mt-10">
+          <Link
+            to="/predictor"
+            className="flex items-center justify-between rounded-sm border border-paper-line bg-ink px-6 py-5 text-paper transition-colors hover:bg-ink-soft"
+          >
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-highlighter">
+                New
+              </p>
+              <p className="mt-1 font-display text-lg font-medium">Question predictor</p>
+              <p className="mt-1 text-sm text-paper/70">
+                Enter your syllabus and CAT-1 / CAT-2 / FAT pattern, upload past papers, get AI-predicted questions.
+              </p>
+            </div>
+            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-paper/50">→</span>
+          </Link>
+        </div>
+
+        {/* Coming soon */}
+        <div className="mt-6">
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
             Coming soon
           </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            {['Flashcards', 'Revision planner', 'Full analytics'].map((label) => (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {['Flashcards', 'Full analytics'].map((label) => (
               <div
                 key={label}
                 className="rounded-sm border border-dashed border-paper-line px-4 py-6 text-center opacity-60"
