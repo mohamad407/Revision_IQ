@@ -3,7 +3,7 @@ import Predictor from '../models/Predictor.js';
 import User from '../models/User.js';
 import cloudinary from '../config/cloudinary.js';
 import { extractPdfText } from '../services/parser.service.js';
-import { predictQuestions, extractTextFromImage } from '../services/ai.service.js';
+import { predictQuestions, extractTextFromImage, generateModelPaper, generateImportantTopics } from '../services/ai.service.js';
 import { ok, fail } from '../utils/response.js';
 import logger from '../utils/logger.js';
 
@@ -199,6 +199,77 @@ export async function generatePrediction(req, res) {
     logger.error('generatePrediction failed:', err);
     await Predictor.findByIdAndUpdate(req.params.id, { status: 'failed' }).catch(() => {});
     return fail(res, 'Failed to generate predictions', 500);
+  }
+}
+
+// POST /api/predictor/:id/model-paper
+// Assembles a full, ready-to-practice paper per stage the user has a pattern for.
+export async function generateModelPaperForSession(req, res) {
+  try {
+    const user = await User.findOne({ firebaseUid: req.firebaseUser.uid });
+    if (!user) return fail(res, 'User not found', 404);
+
+    const predictor = await Predictor.findOne({ _id: req.params.id, user: user._id }).select(
+      '+pastPapers.extractedText'
+    );
+    if (!predictor) return fail(res, 'Predictor session not found', 404);
+
+    const pastPapersText = predictor.pastPapers
+      .map((p) => `--- ${p.fileName} (${p.stage}) ---\n${p.extractedText || ''}`)
+      .join('\n\n');
+
+    const modelPaper = await generateModelPaper({
+      subject: predictor.subject,
+      syllabusText: predictor.syllabusText,
+      pattern: predictor.pattern,
+      pastPapersText,
+    });
+
+    predictor.modelPaper = modelPaper;
+    await predictor.save();
+
+    const response = predictor.toObject();
+    response.pastPapers = response.pastPapers.map(({ extractedText, ...rest }) => rest);
+
+    return ok(res, response, 'Model paper generated');
+  } catch (err) {
+    logger.error('generateModelPaperForSession failed:', err);
+    return fail(res, 'Failed to generate model paper', 500);
+  }
+}
+
+// POST /api/predictor/:id/important-topics
+export async function generateImportantTopicsForSession(req, res) {
+  try {
+    const user = await User.findOne({ firebaseUid: req.firebaseUser.uid });
+    if (!user) return fail(res, 'User not found', 404);
+
+    const predictor = await Predictor.findOne({ _id: req.params.id, user: user._id }).select(
+      '+pastPapers.extractedText'
+    );
+    if (!predictor) return fail(res, 'Predictor session not found', 404);
+
+    const pastPapersText = predictor.pastPapers
+      .map((p) => `--- ${p.fileName} (${p.stage}) ---\n${p.extractedText || ''}`)
+      .join('\n\n');
+
+    const importantTopics = await generateImportantTopics({
+      subject: predictor.subject,
+      syllabusText: predictor.syllabusText,
+      pattern: predictor.pattern,
+      pastPapersText,
+    });
+
+    predictor.importantTopics = importantTopics;
+    await predictor.save();
+
+    const response = predictor.toObject();
+    response.pastPapers = response.pastPapers.map(({ extractedText, ...rest }) => rest);
+
+    return ok(res, response, 'Important topics generated');
+  } catch (err) {
+    logger.error('generateImportantTopicsForSession failed:', err);
+    return fail(res, 'Failed to generate important topics', 500);
   }
 }
 
