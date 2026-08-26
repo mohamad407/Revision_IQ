@@ -10,6 +10,8 @@ import ProfilePage from './pages/ProfilePage';
 import DashboardPage from './pages/DashboardPage';
 import DocumentDetailPage from './pages/DocumentDetailPage';
 import QuizPage from './pages/QuizPage';
+import PredictorListPage from './pages/PredictorListPage';
+import PredictorDetailPage from './pages/PredictorDetailPage';
 
 export default function App() {
   return (
@@ -49,6 +51,22 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <QuizPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/predictor"
+            element={
+              <ProtectedRoute>
+                <PredictorListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/predictor/:id"
+            element={
+              <ProtectedRoute>
+                <PredictorDetailPage />
               </ProtectedRoute>
             }
           />
