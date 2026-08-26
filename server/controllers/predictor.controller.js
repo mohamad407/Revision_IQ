@@ -3,7 +3,7 @@ import Predictor from '../models/Predictor.js';
 import User from '../models/User.js';
 import cloudinary from '../config/cloudinary.js';
 import { extractPdfText } from '../services/parser.service.js';
-import { predictQuestions } from '../services/ai.service.js';
+import { predictQuestions, extractTextFromImage } from '../services/ai.service.js';
 import { ok, fail } from '../utils/response.js';
 import logger from '../utils/logger.js';
 
@@ -91,12 +91,13 @@ export async function updatePredictor(req, res) {
   }
 }
 
-// POST /api/predictor/:id/papers   multipart: file (pdf), stage (cat1|cat2|fat|unspecified)
-// Reuses the same Cloudinary + pdf-parse pipeline as document uploads —
-// this is the "you upload it, we don't scrape it" path.
+// POST /api/predictor/:id/papers   multipart: file (pdf/jpg/png), stage (cat1|cat2|fat|unspecified)
+// Reuses the same Cloudinary pipeline as document uploads, but accepts
+// photos too — most students only have phone photos of old papers.
+// PDFs go through pdf-parse; images go through Gemini's vision transcription.
 export async function uploadPastPaper(req, res) {
   try {
-    if (!req.file) return fail(res, 'No PDF file was uploaded', 400);
+    if (!req.file) return fail(res, 'No file was uploaded', 400);
 
     const user = await User.findOne({ firebaseUid: req.firebaseUser.uid });
     if (!user) return fail(res, 'User not found', 404);
@@ -104,11 +105,20 @@ export async function uploadPastPaper(req, res) {
     const predictor = await Predictor.findOne({ _id: req.params.id, user: user._id });
     if (!predictor) return fail(res, 'Predictor session not found', 404);
 
-    const { data: pdfBuffer } = await axios.get(req.file.path, { responseType: 'arraybuffer' });
-    const { text } = await extractPdfText(pdfBuffer);
+    const { data: fileBuffer } = await axios.get(req.file.path, { responseType: 'arraybuffer' });
+
+    let text = '';
+    if (req.file.mimetype === 'application/pdf') {
+      const extracted = await extractPdfText(fileBuffer);
+      text = extracted.text;
+    } else {
+      // image/jpeg, image/jpg, image/png — hand the photo to Gemini directly
+      text = await extractTextFromImage(Buffer.from(fileBuffer).toString('base64'), req.file.mimetype);
+    }
 
     predictor.pastPapers.push({
       fileName: req.file.originalname,
+      mimeType: req.file.mimetype,
       stage: req.body.stage || 'unspecified',
       cloudinaryUrl: req.file.path,
       cloudinaryPublicId: req.file.filename,
@@ -138,7 +148,10 @@ export async function deletePastPaper(req, res) {
     const paper = predictor.pastPapers.id(req.params.paperId);
     if (!paper) return fail(res, 'Past paper not found', 404);
 
-    await cloudinary.uploader.destroy(paper.cloudinaryPublicId, { resource_type: 'raw' });
+    const resourceType = paper.mimeType?.startsWith('image/') ? 'image' : 'raw';
+    await cloudinary.uploader
+      .destroy(paper.cloudinaryPublicId, { resource_type: resourceType })
+      .catch(() => {});
     paper.deleteOne();
     await predictor.save();
 
@@ -199,9 +212,10 @@ export async function deletePredictor(req, res) {
     if (!predictor) return fail(res, 'Predictor session not found', 404);
 
     await Promise.all(
-      predictor.pastPapers.map((p) =>
-        cloudinary.uploader.destroy(p.cloudinaryPublicId, { resource_type: 'raw' }).catch(() => {})
-      )
+      predictor.pastPapers.map((p) => {
+        const resourceType = p.mimeType?.startsWith('image/') ? 'image' : 'raw';
+        return cloudinary.uploader.destroy(p.cloudinaryPublicId, { resource_type: resourceType }).catch(() => {});
+      })
     );
     await predictor.deleteOne();
 
