@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../lib/api';
+import { exportModelPaperPdf, exportImportantTopicsPdf, exportPredictionsPdf } from '../lib/pdfExport';
 
 const STAGES = [
   { key: 'cat1', label: 'CAT-1' },
@@ -42,6 +43,10 @@ export default function PredictorDetailPage() {
 
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
+  const [generatingPaper, setGeneratingPaper] = useState(false);
+  const [paperGenError, setPaperGenError] = useState('');
+  const [generatingTopics, setGeneratingTopics] = useState(false);
+  const [topicsGenError, setTopicsGenError] = useState('');
 
   const fetchSession = useCallback(async () => {
     setLoading(true);
@@ -143,6 +148,32 @@ export default function PredictorDetailPage() {
     }
   };
 
+  const handleGenerateModelPaper = async () => {
+    setGeneratingPaper(true);
+    setPaperGenError('');
+    try {
+      const { data } = await api.post(`/predictor/${id}/model-paper`);
+      setSession(data.data);
+    } catch (err) {
+      setPaperGenError(err?.response?.data?.message || 'Failed to generate model paper.');
+    } finally {
+      setGeneratingPaper(false);
+    }
+  };
+
+  const handleGenerateImportantTopics = async () => {
+    setGeneratingTopics(true);
+    setTopicsGenError('');
+    try {
+      const { data } = await api.post(`/predictor/${id}/important-topics`);
+      setSession(data.data);
+    } catch (err) {
+      setTopicsGenError(err?.response?.data?.message || 'Failed to generate important topics.');
+    } finally {
+      setGeneratingTopics(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="mx-auto min-h-screen max-w-3xl px-6 py-12">
@@ -166,6 +197,8 @@ export default function PredictorDetailPage() {
 
   const hasAnyPattern = STAGES.some(({ key }) => Number(pattern[key].numQuestions) > 0);
   const hasPredictions = STAGES.some(({ key }) => session.predictions?.[key]?.length > 0);
+  const hasModelPaper = STAGES.some(({ key }) => session.modelPaper?.[key]?.length > 0);
+  const hasImportantTopics = (session.importantTopics || []).length > 0;
 
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-6 py-12">
@@ -367,66 +400,188 @@ export default function PredictorDetailPage() {
 
       {/* Step 4: Predict + results */}
       {step === 3 && (
-        <div className="mt-8">
+        <div className="mt-8 space-y-12">
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
-            Step 4 · Predictions
+            Step 4 · Predictions & prep material
           </p>
-          <p className="mt-1 text-sm text-ink-faint">
+          <p className="-mt-8 text-sm text-ink-faint">
             {hasAnyPattern
-              ? "When you're ready, generate predictions. You can always come back and adjust the pattern or add more papers."
+              ? "Generate whichever of these are useful to you — each one downloads as its own PDF, so you can study offline."
               : 'Go back to Step 2 and set a pattern for at least one stage first.'}
           </p>
 
-          {genError && (
-            <p className="mt-4 rounded-sm bg-flag/10 px-3 py-2 text-sm text-flag" role="alert">
-              {genError}
+          {/* Likely questions */}
+          <div>
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl font-medium text-ink">Likely questions</h2>
+              {hasPredictions && (
+                <button
+                  onClick={() => exportPredictionsPdf(session)}
+                  className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint hover:text-ink"
+                >
+                  Download PDF ↓
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-ink-faint">
+              Ranked by likelihood, with a short reason for each.
             </p>
-          )}
+            {genError && (
+              <p className="mt-3 rounded-sm bg-flag/10 px-3 py-2 text-sm text-flag" role="alert">
+                {genError}
+              </p>
+            )}
+            <button
+              onClick={handleGenerate}
+              className="btn-primary mt-3 w-auto px-8"
+              disabled={!hasAnyPattern || generating}
+            >
+              {generating ? 'Predicting…' : hasPredictions ? 'Regenerate' : 'Predict questions'}
+            </button>
 
-          <div className="mt-4 flex items-center gap-3">
+            {hasPredictions && (
+              <div className="mt-6 space-y-8">
+                {STAGES.map(({ key, label }) => {
+                  const questions = session.predictions?.[key] || [];
+                  if (questions.length === 0) return null;
+                  return (
+                    <div key={key}>
+                      <h3 className="font-display text-base font-medium text-ink">{label}</h3>
+                      <div className="mt-3 space-y-3">
+                        {questions.map((q, i) => (
+                          <div key={i} className="rounded-sm border border-paper-line bg-paper-card p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="font-display text-sm font-medium text-ink">{q.question}</p>
+                              <span
+                                className={`flex-shrink-0 rounded-full px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest ${
+                                  LIKELIHOOD_STYLES[q.likelihood] || ''
+                                }`}
+                              >
+                                {q.likelihood}
+                              </span>
+                            </div>
+                            <p className="mt-1.5 text-xs text-ink-faint">Topic: {q.topic}</p>
+                            {q.reasoning && <p className="mt-1 text-xs text-ink-faint">{q.reasoning}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Model paper */}
+          <div className="border-t border-paper-line pt-10">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl font-medium text-ink">Model paper</h2>
+              {hasModelPaper && (
+                <button
+                  onClick={() => exportModelPaperPdf(session)}
+                  className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint hover:text-ink"
+                >
+                  Download PDF ↓
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-ink-faint">
+              A complete practice paper per stage, numbered and marked exactly to your pattern.
+            </p>
+            {paperGenError && (
+              <p className="mt-3 rounded-sm bg-flag/10 px-3 py-2 text-sm text-flag" role="alert">
+                {paperGenError}
+              </p>
+            )}
+            <button
+              onClick={handleGenerateModelPaper}
+              className="btn-primary mt-3 w-auto px-8"
+              disabled={!hasAnyPattern || generatingPaper}
+            >
+              {generatingPaper ? 'Writing paper…' : hasModelPaper ? 'Regenerate' : 'Generate model paper'}
+            </button>
+
+            {hasModelPaper && (
+              <div className="mt-6 space-y-8">
+                {STAGES.map(({ key, label }) => {
+                  const questions = session.modelPaper?.[key] || [];
+                  if (questions.length === 0) return null;
+                  return (
+                    <div key={key}>
+                      <h3 className="font-display text-base font-medium text-ink">{label}</h3>
+                      <div className="mt-3 space-y-2">
+                        {questions.map((q) => (
+                          <div key={q.number} className="rounded-sm border border-paper-line bg-paper-card p-4">
+                            <p className="font-display text-sm text-ink">
+                              {q.number}. {q.question}
+                            </p>
+                            <p className="mt-1.5 text-xs text-ink-faint">[{q.marks} marks]</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Important topics */}
+          <div className="border-t border-paper-line pt-10">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl font-medium text-ink">Important topics & model answers</h2>
+              {hasImportantTopics && (
+                <button
+                  onClick={() => exportImportantTopicsPdf(session)}
+                  className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint hover:text-ink"
+                >
+                  Download PDF ↓
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-ink-faint">
+              The topics most worth studying, each with a ready-to-learn model answer.
+            </p>
+            {topicsGenError && (
+              <p className="mt-3 rounded-sm bg-flag/10 px-3 py-2 text-sm text-flag" role="alert">
+                {topicsGenError}
+              </p>
+            )}
+            <button
+              onClick={handleGenerateImportantTopics}
+              className="btn-primary mt-3 w-auto px-8"
+              disabled={generatingTopics}
+            >
+              {generatingTopics ? 'Finding topics…' : hasImportantTopics ? 'Regenerate' : 'Generate important topics'}
+            </button>
+
+            {hasImportantTopics && (
+              <div className="mt-6 space-y-3">
+                {session.importantTopics.map((t, i) => (
+                  <div key={i} className="rounded-sm border border-paper-line bg-paper-card p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-display text-sm font-medium text-ink">{t.topic}</p>
+                      <span
+                        className={`flex-shrink-0 rounded-full px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest ${
+                          LIKELIHOOD_STYLES[t.importance] || ''
+                        }`}
+                      >
+                        {t.importance}
+                      </span>
+                    </div>
+                    {t.summary && <p className="mt-1 text-xs text-ink-faint">{t.summary}</p>}
+                    <p className="mt-2 text-sm text-ink-faint">{t.modelAnswer}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-paper-line pt-6">
             <button onClick={() => setStep(2)} className="btn-secondary w-auto px-6">
               Back
             </button>
-            <button
-              onClick={handleGenerate}
-              className="btn-primary w-auto px-8"
-              disabled={!hasAnyPattern || generating}
-            >
-              {generating ? 'Predicting…' : 'Predict questions'}
-            </button>
           </div>
-
-          {hasPredictions && (
-            <div className="mt-10 space-y-8">
-              {STAGES.map(({ key, label }) => {
-                const questions = session.predictions?.[key] || [];
-                if (questions.length === 0) return null;
-                return (
-                  <div key={key}>
-                    <h2 className="font-display text-xl font-medium text-ink">{label}</h2>
-                    <div className="mt-3 space-y-3">
-                      {questions.map((q, i) => (
-                        <div key={i} className="rounded-sm border border-paper-line bg-paper-card p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <p className="font-display text-sm font-medium text-ink">{q.question}</p>
-                            <span
-                              className={`flex-shrink-0 rounded-full px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest ${
-                                LIKELIHOOD_STYLES[q.likelihood] || ''
-                              }`}
-                            >
-                              {q.likelihood}
-                            </span>
-                          </div>
-                          <p className="mt-1.5 text-xs text-ink-faint">Topic: {q.topic}</p>
-                          {q.reasoning && <p className="mt-1 text-xs text-ink-faint">{q.reasoning}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       )}
     </div>
