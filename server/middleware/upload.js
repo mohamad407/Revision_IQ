@@ -25,3 +25,31 @@ export const uploadPdf = multer({
   limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter: pdfOnlyFilter,
 });
+
+// Separate storage config for previous-year papers: accepts PDFs AND
+// photos/scans (jpg, png), since most students only have phone photos of
+// old papers, not clean PDFs. resource_type 'auto' lets Cloudinary store
+// each correctly (raw for PDFs, image for photos) from one multer instance.
+const pastPaperStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'revisioniq/past-papers',
+    resource_type: 'auto',
+    allowed_formats: ['pdf', 'jpg', 'jpeg', 'png'],
+  },
+});
+
+const ACCEPTED_PAST_PAPER_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+
+function pastPaperFilter(req, file, cb) {
+  if (!ACCEPTED_PAST_PAPER_TYPES.includes(file.mimetype)) {
+    return cb(new Error('Only PDF, JPG, or PNG files are accepted.'));
+  }
+  cb(null, true);
+}
+
+export const uploadPastPaperFile = multer({
+  storage: pastPaperStorage,
+  limits: { fileSize: MAX_UPLOAD_BYTES },
+  fileFilter: pastPaperFilter,
+});
