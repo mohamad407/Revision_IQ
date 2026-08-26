@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { body, param } from 'express-validator';
 import { requireAuth } from '../middleware/auth.js';
-import { uploadPdf } from '../middleware/upload.js';
+import { uploadPastPaperFile } from '../middleware/upload.js';
 import { validate } from '../middleware/validate.js';
 import {
   createPredictor,
@@ -52,7 +52,7 @@ router.post(
   requireAuth,
   [param('id').isMongoId()],
   validate,
-  uploadPdf.single('file'),
+  uploadPastPaperFile.single('file'),
   uploadPastPaper
 );
 
