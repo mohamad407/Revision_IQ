@@ -1,4 +1,5 @@
-import admin from 'firebase-admin';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import fs from 'fs';
 
 // In production (Vercel etc.) store the full service account JSON in
@@ -17,10 +18,8 @@ function loadServiceAccount() {
   );
 }
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(loadServiceAccount()),
-  });
-}
+// firebase-admin v13+ uses the modular API (the old `admin.apps` default import is gone).
+const app = getApps().length ? getApps()[0] : initializeApp({ credential: cert(loadServiceAccount()) });
 
-export default admin;
+export const firebaseAuth = getAuth(app);
+export default app;
