@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { body, param } from 'express-validator';
-import { requireAuth } from '../middleware/auth.js';
-import { uploadPastPaperFile } from '../middleware/upload.js';
+import { requireAuth, requireUser } from '../middleware/auth.js';
+import { uploadPastPaperFile, verifyFileSignature } from '../middleware/upload.js';
+import { aiLimiter, uploadLimiter } from '../middleware/rateLimit.js';
 import { validate } from '../middleware/validate.js';
+import { LIMITS } from '../utils/pattern.js';
 import {
   createPredictor,
   listPredictors,
@@ -17,71 +19,42 @@ import {
 } from '../controllers/predictor.controller.js';
 
 const router = Router();
+const auth = [requireAuth, requireUser];
+const id = param('id').isMongoId();
 
-router.post(
-  '/',
-  requireAuth,
-  [
-    body('subject').isString().trim().notEmpty().withMessage('Subject is required'),
-    body('syllabusText').optional().isString(),
-    body('pattern').optional().isObject(),
-  ],
-  validate,
-  createPredictor
-);
+const fieldRules = (required) => [
+  required
+    ? body('subject').isString().trim().notEmpty().isLength({ max: 200 }).withMessage('Subject is required (max 200 chars)')
+    : body('subject').optional().isString().trim().notEmpty().isLength({ max: 200 }),
+  body('syllabusText').optional().isString().isLength({ max: LIMITS.maxSyllabusChars }),
+  body('pattern').optional().isObject(),
+];
 
-router.get('/', requireAuth, listPredictors);
+router.post('/', ...auth, fieldRules(true), validate, createPredictor);
+router.get('/', ...auth, listPredictors);
+router.get('/:id', ...auth, [id], validate, getPredictor);
+router.put('/:id', ...auth, [id, ...fieldRules(false)], validate, updatePredictor);
+router.delete('/:id', ...auth, [id], validate, deletePredictor);
 
-router.get('/:id', requireAuth, [param('id').isMongoId()], validate, getPredictor);
-
-router.put(
-  '/:id',
-  requireAuth,
-  [
-    param('id').isMongoId(),
-    body('subject').optional().isString().trim().notEmpty(),
-    body('syllabusText').optional().isString(),
-    body('pattern').optional().isObject(),
-  ],
-  validate,
-  updatePredictor
-);
-
-router.delete('/:id', requireAuth, [param('id').isMongoId()], validate, deletePredictor);
-
+// multer first so multipart text fields (stage) are parsed, then validate them.
 router.post(
   '/:id/papers',
-  requireAuth,
-  [param('id').isMongoId()],
+  ...auth,
+  uploadLimiter,
+  aiLimiter,
+  [id],
   validate,
   uploadPastPaperFile.single('file'),
+  verifyFileSignature,
+  [body('stage').optional().isIn(['cat1', 'cat2', 'fat', 'unspecified'])],
+  validate,
   uploadPastPaper
 );
 
-router.delete(
-  '/:id/papers/:paperId',
-  requireAuth,
-  [param('id').isMongoId(), param('paperId').isMongoId()],
-  validate,
-  deletePastPaper
-);
+router.delete('/:id/papers/:paperId', ...auth, [id, param('paperId').isMongoId()], validate, deletePastPaper);
 
-router.post('/:id/generate', requireAuth, [param('id').isMongoId()], validate, generatePrediction);
-
-router.post(
-  '/:id/model-paper',
-  requireAuth,
-  [param('id').isMongoId()],
-  validate,
-  generateModelPaperForSession
-);
-
-router.post(
-  '/:id/important-topics',
-  requireAuth,
-  [param('id').isMongoId()],
-  validate,
-  generateImportantTopicsForSession
-);
+router.post('/:id/generate', ...auth, aiLimiter, [id], validate, generatePrediction);
+router.post('/:id/model-paper', ...auth, aiLimiter, [id], validate, generateModelPaperForSession);
+router.post('/:id/important-topics', ...auth, aiLimiter, [id], validate, generateImportantTopicsForSession);
 
 export default router;
