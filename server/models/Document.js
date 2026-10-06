@@ -5,8 +5,10 @@ const documentSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     fileName: { type: String, required: true },
     subject: { type: String, trim: true, default: '' },
-    cloudinaryUrl: { type: String, required: true },
+    cloudinaryUrl: { type: String, required: true, select: false }, // private asset: never sent to clients
     cloudinaryPublicId: { type: String, required: true },
+    // 'authenticated' for new (private) uploads; 'upload' = legacy public assets
+    cloudinaryType: { type: String, enum: ['upload', 'authenticated'], default: 'upload' },
     pages: { type: Number },
     uploadDate: { type: Date, default: Date.now },
     extractedText: { type: String, select: false }, // large — excluded by default
