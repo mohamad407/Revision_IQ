@@ -1,4 +1,6 @@
 import Document from '../models/Document.js';
+import Flashcard from '../models/Flashcard.js';
+import Quiz from '../models/Quiz.js';
 import { extractPdfText } from '../services/parser.service.js';
 import { generateSummary } from '../services/ai.service.js';
 import { uploadBufferToCloudinary, destroyCloudinaryAsset } from '../middleware/upload.js';
@@ -87,6 +89,10 @@ export async function deleteDocument(req, res) {
       mimeType: 'application/pdf',
       type: doc.cloudinaryType,
     });
+    await Promise.all([
+      Flashcard.deleteMany({ user: req.user._id, document: doc._id }),
+      Quiz.deleteMany({ user: req.user._id, document: doc._id }),
+    ]);
     await doc.deleteOne();
 
     return ok(res, null, 'Document deleted');
