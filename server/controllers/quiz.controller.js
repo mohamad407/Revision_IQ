@@ -5,6 +5,7 @@ import { logActivity } from '../services/activity.service.js';
 import { parseTzOffset } from '../utils/day.js';
 import { ok, fail } from '../utils/response.js';
 import logger from '../utils/logger.js';
+import { sendError } from '../utils/errors.js';
 
 // POST /api/quiz/generate  { documentId }
 export async function generateQuizForDocument(req, res) {
@@ -32,7 +33,7 @@ export async function generateQuizForDocument(req, res) {
     );
   } catch (err) {
     logger.error('generateQuizForDocument failed:', err);
-    return fail(res, 'Failed to generate quiz', 500);
+    return sendError(res, err, 'Failed to generate quiz');
   }
 }
 
