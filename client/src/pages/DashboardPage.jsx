@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
+import StatsPanel from '../components/StatsPanel';
 
 const STATUS_STYLES = {
   processing: 'text-highlighter-deep bg-highlighter/15',
@@ -18,6 +19,7 @@ export default function DashboardPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [dragActive, setDragActive] = useState(false);
+  const [stats, setStats] = useState(null);
 
   const fetchDocuments = useCallback(async () => {
     setLoadingDocs(true);
@@ -31,9 +33,24 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const { data } = await api.get('/stats');
+      setStats(data?.data || null);
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments]);
+    fetchStats();
+  }, [fetchDocuments, fetchStats]);
+
+  const saveExam = async (nextExam) => {
+    await api.put('/user/profile', { nextExam });
+    await fetchStats();
+  };
 
   const handleFile = (selected) => {
     if (!selected) return;
@@ -78,36 +95,40 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-paper">
-      <header className="flex items-center justify-between border-b border-paper-line px-6 py-4">
-        <div className="flex items-center gap-2">
+      <header className="flex items-center justify-between gap-3 border-b border-paper-line px-4 py-4 sm:px-6">
+        <div className="flex flex-shrink-0 items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-highlighter font-display text-sm font-semibold text-ink">
             R
           </span>
           <span className="font-display text-base font-medium tracking-tight">RevisionIQ</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <Link
             to="/profile"
-            className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint hover:text-ink"
+            title={firebaseUser?.email}
+            className="min-w-0 truncate font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint hover:text-ink"
           >
-            {firebaseUser?.email}
+            <span className="sm:hidden">Profile</span>
+            <span className="hidden sm:inline">{firebaseUser?.email}</span>
           </Link>
           <button
             onClick={logout}
-            className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint hover:text-flag"
+            className="flex-shrink-0 whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint hover:text-flag"
           >
             Log out
           </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-12">
+      <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
         <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
           Your workspace
         </p>
         <h1 className="mt-2 font-display text-3xl font-medium text-ink">
           Welcome back{firebaseUser?.displayName ? `, ${firebaseUser.displayName.split(' ')[0]}` : ''}.
         </h1>
+
+        <StatsPanel stats={stats} onSaveExam={saveExam} />
 
         {/* Upload */}
         <form
@@ -239,24 +260,21 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Coming soon */}
-        <div className="mt-6">
-          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
-            Coming soon
-          </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {['Flashcards', 'Full analytics'].map((label) => (
-              <div
-                key={label}
-                className="rounded-sm border border-dashed border-paper-line px-4 py-6 text-center opacity-60"
-              >
-                <p className="font-display text-sm font-medium text-ink">{label}</p>
-                <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-ink-faint">
-                  Coming soon
-                </p>
-              </div>
-            ))}
-          </div>
+        {/* Flashcards */}
+        <div className="mt-4">
+          <Link
+            to="/flashcards"
+            className="flex items-center justify-between rounded-sm border border-paper-line bg-paper-card px-6 py-5 transition-colors hover:border-ink"
+          >
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-correct">New</p>
+              <p className="mt-1 font-display text-lg font-medium text-ink">Flashcards</p>
+              <p className="mt-1 text-sm text-ink-faint">
+                Spaced-repetition review: cards come back right before you would forget them.
+              </p>
+            </div>
+            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">→</span>
+          </Link>
         </div>
       </main>
     </div>
