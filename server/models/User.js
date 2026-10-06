@@ -9,6 +9,10 @@ const userSchema = new mongoose.Schema(
     university: { type: String, trim: true, default: '' },
     department: { type: String, trim: true, default: '' },
     semester: { type: String, trim: true, default: '' },
+    nextExam: {
+      name: { type: String, trim: true, maxlength: 100 },
+      date: { type: Date },
+    },
     lastLogin: { type: Date, default: Date.now },
   },
   { timestamps: true }
