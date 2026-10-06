@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireUser } from '../middleware/auth.js';
+import { aiLimiter } from '../middleware/rateLimit.js';
 import { validate } from '../middleware/validate.js';
 import {
   generateQuizForDocument,
@@ -13,7 +14,9 @@ const router = Router();
 router.post(
   '/generate',
   requireAuth,
-  [body('documentId').isMongoId()],
+  requireUser,
+  aiLimiter,
+  [body('documentId').isString().isMongoId()],
   validate,
   generateQuizForDocument
 );
@@ -21,16 +24,17 @@ router.post(
 router.post(
   '/submit',
   requireAuth,
+  requireUser,
   [
-    body('quizId').isMongoId(),
-    body('answers').isArray({ min: 1 }),
-    body('answers.*.questionIndex').isInt({ min: 0 }),
-    body('answers.*.selected').isString(),
+    body('quizId').isString().isMongoId(),
+    body('answers').isArray({ min: 1, max: 20 }),
+    body('answers.*.questionIndex').isInt({ min: 0, max: 19 }).toInt(),
+    body('answers.*.selected').isString().isLength({ max: 1000 }),
   ],
   validate,
   submitQuiz
 );
 
-router.get('/history', requireAuth, getQuizHistory);
+router.get('/history', requireAuth, requireUser, getQuizHistory);
 
 export default router;
