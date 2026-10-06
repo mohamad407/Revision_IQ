@@ -12,6 +12,7 @@ import DocumentDetailPage from './pages/DocumentDetailPage';
 import QuizPage from './pages/QuizPage';
 import PredictorListPage from './pages/PredictorListPage';
 import PredictorDetailPage from './pages/PredictorDetailPage';
+import FlashcardsPage from './pages/FlashcardsPage';
 
 export default function App() {
   return (
@@ -67,6 +68,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <PredictorDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/flashcards"
+            element={
+              <ProtectedRoute>
+                <FlashcardsPage />
               </ProtectedRoute>
             }
           />
