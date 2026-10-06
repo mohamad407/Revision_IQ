@@ -22,6 +22,8 @@ api.interceptors.request.use(async (config) => {
     const token = await currentUser.getIdToken();
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Lets the server roll streaks over at the student's local midnight.
+  config.headers['X-TZ-Offset'] = String(new Date().getTimezoneOffset());
   return config;
 });
 
