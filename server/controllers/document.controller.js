@@ -4,6 +4,7 @@ import Quiz from '../models/Quiz.js';
 import { extractPdfText } from '../services/parser.service.js';
 import { generateSummary } from '../services/ai.service.js';
 import { uploadBufferToCloudinary, destroyCloudinaryAsset } from '../middleware/upload.js';
+import { sendError } from '../utils/errors.js';
 import { ok, fail } from '../utils/response.js';
 import logger from '../utils/logger.js';
 
@@ -98,5 +99,25 @@ export async function deleteDocument(req, res) {
     return ok(res, null, 'Document deleted');
   } catch (err) {
     return fail(res, 'Failed to delete document', 500);
+  }
+}
+
+// POST /api/documents/:id/summary
+// Re-runs the AI summary (e.g. when the AI was down during upload).
+export async function regenerateSummary(req, res) {
+  try {
+    const doc = await Document.findOne({ _id: req.params.id, user: req.user._id }).select('+extractedText');
+    if (!doc) return fail(res, 'Document not found', 404);
+    if (!doc.extractedText) return fail(res, 'This document has no readable text (it may be a scanned PDF).', 400);
+
+    doc.summary = await generateSummary(doc.extractedText, { strict: true });
+    await doc.save();
+
+    const safe = doc.toObject();
+    delete safe.extractedText;
+    return ok(res, safe, 'Summary regenerated');
+  } catch (err) {
+    logger.error('regenerateSummary failed:', err);
+    return sendError(res, err, 'Failed to regenerate summary');
   }
 }
