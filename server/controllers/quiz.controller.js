@@ -1,6 +1,8 @@
 import Document from '../models/Document.js';
 import Quiz from '../models/Quiz.js';
 import { generateQuiz } from '../services/ai.service.js';
+import { logActivity } from '../services/activity.service.js';
+import { parseTzOffset } from '../utils/day.js';
 import { ok, fail } from '../utils/response.js';
 import logger from '../utils/logger.js';
 
@@ -59,6 +61,7 @@ export async function submitQuiz(req, res) {
 
     quiz.attempts.push({ answers: gradedAnswers, score, total: quiz.questions.length });
     await quiz.save();
+    await logActivity(req.user._id, parseTzOffset(req.headers['x-tz-offset']), { quizzes: 1 });
 
     return ok(
       res,
