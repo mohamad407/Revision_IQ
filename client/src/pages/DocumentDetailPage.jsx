@@ -10,6 +10,7 @@ export default function DocumentDetailPage() {
   const [loadError, setLoadError] = useState('');
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
+  const [makingCards, setMakingCards] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +40,19 @@ export default function DocumentDetailPage() {
       setGenError(err?.response?.data?.message || 'Failed to generate quiz.');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleMakeFlashcards = async () => {
+    setMakingCards(true);
+    setGenError('');
+    try {
+      await api.post('/flashcards/generate', { documentId: id });
+      navigate('/flashcards');
+    } catch (err) {
+      setGenError(err?.response?.data?.message || 'Failed to create flashcards.');
+    } finally {
+      setMakingCards(false);
     }
   };
 
@@ -116,13 +130,22 @@ export default function DocumentDetailPage() {
       )}
 
       {doc.status === 'ready' && (
-        <button
-          onClick={handleGenerateQuiz}
-          className="btn-primary mt-6 w-auto px-8"
-          disabled={generating}
-        >
-          {generating ? 'Generating quiz…' : 'Take the quiz'}
-        </button>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button
+            onClick={handleGenerateQuiz}
+            className="btn-primary w-auto px-8"
+            disabled={generating || makingCards}
+          >
+            {generating ? 'Generating quiz…' : 'Take the quiz'}
+          </button>
+          <button
+            onClick={handleMakeFlashcards}
+            className="btn-secondary w-auto px-8"
+            disabled={generating || makingCards}
+          >
+            {makingCards ? 'Making flashcards…' : 'Make flashcards'}
+          </button>
+        </div>
       )}
     </div>
   );
