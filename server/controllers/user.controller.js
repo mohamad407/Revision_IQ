@@ -2,6 +2,8 @@ import User from '../models/User.js';
 import Document from '../models/Document.js';
 import Quiz from '../models/Quiz.js';
 import Predictor from '../models/Predictor.js';
+import Flashcard from '../models/Flashcard.js';
+import Activity from '../models/Activity.js';
 import { firebaseAuth } from '../config/firebase.js';
 import { destroyCloudinaryAsset } from '../middleware/upload.js';
 import { ok, fail } from '../utils/response.js';
@@ -15,7 +17,17 @@ export async function updateProfile(req, res) {
       if (typeof req.body[key] === 'string') update[key] = req.body[key];
     }
 
-    const user = await User.findByIdAndUpdate(req.user._id, { $set: update }, {
+    const op = { $set: update };
+    if (req.body.nextExam === null) {
+      op.$unset = { nextExam: '' }; // clear the countdown
+    } else if (req.body.nextExam && req.body.nextExam.date) {
+      update.nextExam = {
+        name: String(req.body.nextExam.name || 'Exam').slice(0, 100),
+        date: new Date(req.body.nextExam.date),
+      };
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, op, {
       new: true,
       runValidators: true,
     });
@@ -53,6 +65,8 @@ export async function deleteAccount(req, res) {
 
     await Promise.all([
       Quiz.deleteMany({ user: userId }),
+      Flashcard.deleteMany({ user: userId }),
+      Activity.deleteMany({ user: userId }),
       Document.deleteMany({ user: userId }),
       Predictor.deleteMany({ user: userId }),
     ]);
