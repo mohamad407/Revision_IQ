@@ -9,6 +9,8 @@ import userRoutes from './routes/user.routes.js';
 import documentRoutes from './routes/document.routes.js';
 import quizRoutes from './routes/quiz.routes.js';
 import predictorRoutes from './routes/predictor.routes.js';
+import flashcardRoutes from './routes/flashcard.routes.js';
+import statsRoutes from './routes/stats.routes.js';
 import { errorHandler } from './middleware/error.js';
 import { globalLimiter } from './middleware/rateLimit.js';
 
@@ -37,7 +39,7 @@ app.use(
       return cb(null, false);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-TZ-Offset'],
     maxAge: 600,
   })
 );
@@ -56,6 +58,8 @@ app.use('/api/user', userRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/predictor', predictorRoutes);
+app.use('/api/flashcards', flashcardRoutes);
+app.use('/api/stats', statsRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
