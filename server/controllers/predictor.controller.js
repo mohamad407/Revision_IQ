@@ -10,6 +10,7 @@ import { uploadBufferToCloudinary, destroyCloudinaryAsset } from '../middleware/
 import { sanitizePattern } from '../utils/pattern.js';
 import { ok, fail } from '../utils/response.js';
 import logger from '../utils/logger.js';
+import { sendError } from '../utils/errors.js';
 
 const MAX_SESSIONS_PER_USER = 50;
 const MAX_PAPERS_PER_SESSION = 15;
@@ -120,7 +121,8 @@ export async function uploadPastPaper(req, res) {
       } else {
         text = await extractTextFromImage(req.file.buffer.toString('base64'), req.file.mimetype);
       }
-    } catch {
+    } catch (err) {
+      if (err.expose) return sendError(res, err); // AI down: say so instead of blaming the file
       return fail(res, 'Could not read this file. Try a clearer scan or a different PDF.', 422);
     }
 
@@ -150,7 +152,7 @@ export async function uploadPastPaper(req, res) {
         type: uploaded.type,
       });
     }
-    return fail(res, 'Failed to process past paper', 500);
+    return sendError(res, err, 'Failed to process past paper');
   }
 }
 
@@ -221,7 +223,7 @@ export async function generatePrediction(req, res) {
     return ok(res, stripPapers(predictor), 'Predictions generated');
   } catch (err) {
     logger.error('generatePrediction failed:', err);
-    return fail(res, 'Failed to generate predictions', 500);
+    return sendError(res, err, 'Failed to generate predictions');
   }
 }
 
@@ -242,7 +244,7 @@ export async function generateModelPaperForSession(req, res) {
     return ok(res, stripPapers(predictor), 'Model paper generated');
   } catch (err) {
     logger.error('generateModelPaperForSession failed:', err);
-    return fail(res, 'Failed to generate model paper', 500);
+    return sendError(res, err, 'Failed to generate model paper');
   }
 }
 
@@ -263,7 +265,7 @@ export async function generateImportantTopicsForSession(req, res) {
     return ok(res, stripPapers(predictor), 'Important topics generated');
   } catch (err) {
     logger.error('generateImportantTopicsForSession failed:', err);
-    return fail(res, 'Failed to generate important topics', 500);
+    return sendError(res, err, 'Failed to generate important topics');
   }
 }
 
