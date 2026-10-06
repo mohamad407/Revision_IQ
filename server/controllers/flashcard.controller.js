@@ -6,6 +6,7 @@ import { schedule } from '../utils/sm2.js';
 import { parseTzOffset } from '../utils/day.js';
 import { ok, fail } from '../utils/response.js';
 import logger from '../utils/logger.js';
+import { sendError } from '../utils/errors.js';
 
 const MAX_CARDS_PER_DOCUMENT = 100;
 
@@ -45,7 +46,7 @@ export async function generateForDocument(req, res) {
     );
   } catch (err) {
     logger.error('generateForDocument failed:', err);
-    return fail(res, 'Failed to generate flashcards', 500);
+    return sendError(res, err, 'Failed to generate flashcards');
   }
 }
 
