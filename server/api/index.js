@@ -3,17 +3,24 @@ import mongoose from 'mongoose';
 import app from '../app.js';
 import logger from '../utils/logger.js';
 
-// Serverless functions can be invoked many times against a warm container —
-// reuse the Mongo connection across invocations instead of reconnecting
-// on every request (which would exhaust Atlas connections fast).
-let isConnected = false;
+// Serverless: reuse ONE connection promise across warm invocations. Caching the
+// promise (not a boolean) stops concurrent cold-start requests from each
+// opening their own connection and exhausting Atlas limits.
+let connecting = null;
 
-async function ensureDbConnected() {
-  if (isConnected) return;
-  mongoose.set('strictQuery', true);
-  await mongoose.connect(process.env.MONGO_URI);
-  isConnected = true;
-  logger.info('[db] MongoDB connected (serverless)');
+function ensureDbConnected() {
+  if (mongoose.connection.readyState === 1) return Promise.resolve();
+  if (!connecting) {
+    mongoose.set('strictQuery', true);
+    connecting = mongoose
+      .connect(process.env.MONGO_URI, { maxPoolSize: 5, serverSelectionTimeoutMS: 8000 })
+      .then(() => logger.info('[db] MongoDB connected (serverless)'))
+      .catch((err) => {
+        connecting = null; // allow retry on next request
+        throw err;
+      });
+  }
+  return connecting;
 }
 
 export default async function handler(req, res) {
