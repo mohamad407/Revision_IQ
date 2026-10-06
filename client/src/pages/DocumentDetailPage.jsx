@@ -11,6 +11,7 @@ export default function DocumentDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
   const [makingCards, setMakingCards] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +54,19 @@ export default function DocumentDetailPage() {
       setGenError(err?.response?.data?.message || 'Failed to create flashcards.');
     } finally {
       setMakingCards(false);
+    }
+  };
+
+  const handleRetrySummary = async () => {
+    setRetrying(true);
+    setGenError('');
+    try {
+      const { data } = await api.post(`/documents/${id}/summary`);
+      setDoc((d) => ({ ...d, ...data.data }));
+    } catch (err) {
+      setGenError(err?.response?.data?.message || 'Could not regenerate the summary.');
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -119,6 +133,15 @@ export default function DocumentDetailPage() {
                 </li>
               ))}
             </ul>
+          )}
+          {!doc.summary.keyPoints?.length && (
+            <button
+              onClick={handleRetrySummary}
+              disabled={retrying}
+              className="btn-secondary mt-4 w-auto px-6"
+            >
+              {retrying ? 'Retrying…' : 'Retry summary'}
+            </button>
           )}
         </div>
       )}
