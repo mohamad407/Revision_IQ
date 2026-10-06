@@ -9,6 +9,7 @@ import {
   listDocuments,
   getDocument,
   deleteDocument,
+  regenerateSummary,
 } from '../controllers/document.controller.js';
 
 const router = Router();
@@ -30,6 +31,7 @@ router.post(
 
 router.get('/', requireAuth, requireUser, listDocuments);
 router.get('/:id', requireAuth, requireUser, [param('id').isMongoId()], validate, getDocument);
+router.post('/:id/summary', requireAuth, requireUser, aiLimiter, [param('id').isMongoId()], validate, regenerateSummary);
 router.delete('/:id', requireAuth, requireUser, [param('id').isMongoId()], validate, deleteDocument);
 
 export default router;
