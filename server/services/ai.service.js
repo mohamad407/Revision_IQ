@@ -271,3 +271,30 @@ Return ONLY valid JSON: an array of objects shaped like:
     }))
     .slice(0, 15);
 }
+
+/** generateFlashcards(text) -> Array<{ front, back }>  (8-12 study cards) */
+export async function generateFlashcards(text) {
+  const prompt = `You are making spaced-repetition flashcards from lecture material
+so a student can memorise it. ${SECURITY_RULES}
+
+Return ONLY valid JSON: an array of 8 to 12 objects shaped like
+{ "front": "a short question, term or prompt", "back": "a concise, correct answer (1-3 sentences)" }
+
+Rules:
+- One idea per card; no yes/no questions.
+- Cover the most exam-relevant concepts, definitions, formulas and comparisons.
+- Use only facts from the text.
+
+LECTURE TEXT:
+${untrusted(text)}`;
+
+  const parsed = await generateJson(prompt);
+  if (!Array.isArray(parsed)) throw new Error('Gemini did not return a flashcard array.');
+
+  const seen = new Set();
+  return parsed
+    .filter((c) => c && typeof c.front === 'string' && typeof c.back === 'string')
+    .map((c) => ({ front: c.front.trim().slice(0, 600), back: c.back.trim().slice(0, 1500) }))
+    .filter((c) => c.front && c.back && !seen.has(c.front.toLowerCase()) && seen.add(c.front.toLowerCase()))
+    .slice(0, 12);
+}
