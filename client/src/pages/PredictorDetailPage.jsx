@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../lib/api';
+import AnswerChecker from '../components/AnswerChecker';
+import TopicHeatmap from '../components/TopicHeatmap';
 import { exportModelPaperPdf, exportImportantTopicsPdf, exportPredictionsPdf } from '../lib/pdfExport';
 
 const STAGES = [
@@ -45,6 +47,8 @@ export default function PredictorDetailPage() {
   const [genError, setGenError] = useState('');
   const [generatingPaper, setGeneratingPaper] = useState(false);
   const [paperGenError, setPaperGenError] = useState('');
+  const [generatingFreq, setGeneratingFreq] = useState(false);
+  const [freqError, setFreqError] = useState('');
   const [generatingTopics, setGeneratingTopics] = useState(false);
   const [topicsGenError, setTopicsGenError] = useState('');
 
@@ -158,6 +162,19 @@ export default function PredictorDetailPage() {
       setPaperGenError(err?.response?.data?.message || 'Failed to generate model paper.');
     } finally {
       setGeneratingPaper(false);
+    }
+  };
+
+  const handleTopicFrequency = async () => {
+    setGeneratingFreq(true);
+    setFreqError('');
+    try {
+      const { data } = await api.post(`/predictor/${id}/topic-frequency`);
+      setSession(data.data);
+    } catch (err) {
+      setFreqError(err?.response?.data?.message || 'Failed to analyse topics.');
+    } finally {
+      setGeneratingFreq(false);
     }
   };
 
@@ -462,6 +479,11 @@ export default function PredictorDetailPage() {
                             </div>
                             <p className="mt-1.5 text-xs text-ink-faint">Topic: {q.topic}</p>
                             {q.reasoning && <p className="mt-1 text-xs text-ink-faint">{q.reasoning}</p>}
+                            <AnswerChecker
+                              predictorId={id}
+                              question={q.question}
+                              marks={Number(session.pattern?.[key]?.marksPerQuestion) || 10}
+                            />
                           </div>
                         ))}
                       </div>
@@ -470,6 +492,30 @@ export default function PredictorDetailPage() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* Topic frequency heatmap */}
+          <div className="border-t border-paper-line pt-10">
+            <h2 className="font-display text-xl font-medium text-ink">Topic frequency</h2>
+            <p className="mt-1 text-sm text-ink-faint">
+              Which topics keep coming back? Counted across the past papers you uploaded.
+            </p>
+            {freqError && (
+              <p className="mt-3 rounded-sm bg-flag/10 px-3 py-2 text-sm text-flag" role="alert">
+                {freqError}
+              </p>
+            )}
+            <button
+              onClick={handleTopicFrequency}
+              className="btn-primary mt-3 w-auto px-8"
+              disabled={generatingFreq || !(session.pastPapers?.length > 0)}
+            >
+              {generatingFreq ? 'Analysing…' : session.topicFrequency?.length ? 'Re-analyse' : 'Analyse past papers'}
+            </button>
+            {!(session.pastPapers?.length > 0) && (
+              <p className="mt-2 text-xs text-ink-faint">Upload at least one past paper in step 3 first.</p>
+            )}
+            <TopicHeatmap rows={session.topicFrequency} />
           </div>
 
           {/* Model paper */}
@@ -500,6 +546,12 @@ export default function PredictorDetailPage() {
             >
               {generatingPaper ? 'Writing paper…' : hasModelPaper ? 'Regenerate' : 'Generate model paper'}
             </button>
+
+            {hasModelPaper && (
+              <Link to={`/predictor/${id}/mock`} className="btn-secondary mt-3 w-auto px-8">
+                Sit it as a timed mock exam →
+              </Link>
+            )}
 
             {hasModelPaper && (
               <div className="mt-6 space-y-8">
