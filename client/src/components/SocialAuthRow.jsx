@@ -1,33 +1,52 @@
-export default function SocialAuthRow({ onGoogleClick, loading }) {
+// Apple and Microsoft buttons switch on with build-time flags, so the site never shows a
+// button that would fail. Turn each on (value "true") ONLY after the provider is enabled
+// in Firebase Console -> Authentication -> Sign-in method, then redeploy the client.
+const APPLE_ON = import.meta.env.VITE_ENABLE_APPLE_LOGIN === 'true';
+const MICROSOFT_ON = import.meta.env.VITE_ENABLE_MICROSOFT_LOGIN === 'true';
+
+function ProviderButton({ enabled, onClick, loading, icon, name }) {
+  if (!enabled) {
+    return (
+      <div
+        className="group relative flex cursor-not-allowed items-center justify-center gap-2 rounded-sm border-2 border-paper-line bg-paper px-4 py-2.5 text-sm font-medium text-ink-faint opacity-60"
+        title="Coming soon"
+      >
+        {icon}
+        {name}
+        <Tooltip text="Coming soon" />
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      className="flex items-center justify-center gap-2 rounded-sm border-2 border-paper-line bg-paper-card px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {icon}
+      {name}
+    </button>
+  );
+}
+
+export default function SocialAuthRow({ onGoogleClick, onAppleClick, onMicrosoftClick, loading }) {
   return (
     <div>
-      <button
-        type="button"
-        onClick={onGoogleClick}
-        disabled={loading}
-        className="btn-secondary"
-      >
+      <button type="button" onClick={onGoogleClick} disabled={loading} className="btn-secondary">
         <GoogleIcon />
         Continue with Google
       </button>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
-        <div
-          className="group relative flex cursor-not-allowed items-center justify-center gap-2 rounded-sm border-2 border-paper-line bg-paper px-4 py-2.5 text-sm font-medium text-ink-faint opacity-60"
-          title="Coming soon"
-        >
-          <AppleIcon />
-          Apple
-          <Tooltip text="Coming soon" />
-        </div>
-        <div
-          className="group relative flex cursor-not-allowed items-center justify-center gap-2 rounded-sm border-2 border-paper-line bg-paper px-4 py-2.5 text-sm font-medium text-ink-faint opacity-60"
-          title="Coming soon"
-        >
-          <MicrosoftIcon />
-          Microsoft
-          <Tooltip text="Coming soon" />
-        </div>
+        <ProviderButton enabled={APPLE_ON} onClick={onAppleClick} loading={loading} icon={<AppleIcon />} name="Apple" />
+        <ProviderButton
+          enabled={MICROSOFT_ON}
+          onClick={onMicrosoftClick}
+          loading={loading}
+          icon={<MicrosoftIcon />}
+          name="Microsoft"
+        />
       </div>
     </div>
   );
