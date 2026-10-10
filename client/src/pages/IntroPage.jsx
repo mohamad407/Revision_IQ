@@ -12,7 +12,7 @@ export default function IntroPage() {
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.1] animate-pan-grid"
         style={{
-          backgroundImage: 'radial-gradient(#F4F6F5 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(rgb(var(--paper)) 1px, transparent 1px)',
           backgroundSize: '26px 26px',
         }}
       />
