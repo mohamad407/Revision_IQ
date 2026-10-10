@@ -146,7 +146,7 @@ export default function FlashcardsPage() {
           >
             <span className="font-mono text-[10px] uppercase tracking-widest text-ink-faint">
               {flipped ? 'Answer' : 'Question'}
-              {current.document?.fileName ? ` · ${current.document.fileName}` : ''}
+              {current.document?.fileName || current.deckName ? ` · ${current.document?.fileName || current.deckName}` : ''}
             </span>
             <span className="mt-4 whitespace-pre-line font-display text-xl text-ink sm:text-2xl">
               {flipped ? current.back : current.front}
