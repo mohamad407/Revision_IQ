@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import StatsPanel from '../components/StatsPanel';
+import ThemeToggle from '../components/ThemeToggle';
 
 const STATUS_STYLES = {
   processing: 'text-highlighter-deep bg-highlighter/15',
@@ -11,7 +12,7 @@ const STATUS_STYLES = {
 };
 
 export default function DashboardPage() {
-  const { firebaseUser, logout } = useAuth();
+  const { firebaseUser, logout, profile } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [file, setFile] = useState(null);
@@ -102,7 +103,13 @@ export default function DashboardPage() {
           </span>
           <span className="font-display text-base font-medium tracking-tight">RevisionIQ</span>
         </div>
-        <div className="flex min-w-0 items-center gap-4">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <ThemeToggle />
+          {profile?.role === 'admin' && (
+            <Link to="/admin" className="flex-shrink-0 font-mono text-[11px] uppercase tracking-[0.14em] text-highlighter-deep hover:text-ink">
+              Admin
+            </Link>
+          )}
           <Link
             to="/profile"
             title={firebaseUser?.email}
