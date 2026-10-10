@@ -9,7 +9,7 @@ import logger from '../utils/logger.js';
 // hit the unique index on firebaseUid.
 export async function loginOrSync(req, res) {
   try {
-    const { uid, email, name, picture } = req.firebaseUser;
+    const { uid, email, name, picture, email_verified: emailVerified } = req.firebaseUser;
 
     const set = { lastLogin: new Date() };
     if (name) set.name = name;
@@ -23,6 +23,16 @@ export async function loginOrSync(req, res) {
       },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
+
+    if (user.disabled) return fail(res, 'This account has been disabled.', 403);
+
+    // Admins are declared in the ADMIN_EMAILS env var (comma-separated). The email must be
+    // verified, otherwise someone could register an admin's address without owning it.
+    const admins = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean);
+    if (emailVerified && admins.includes(user.email) && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
+    }
 
     return ok(res, user, 'Signed in');
   } catch (err) {
