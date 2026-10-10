@@ -8,7 +8,7 @@ import {
   updateProfile,
   signOut,
 } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase/firebase';
+import { auth, googleProvider, appleProvider, microsoftProvider } from '../firebase/firebase';
 import api from '../lib/api';
 
 const AuthContext = createContext(undefined);
@@ -74,10 +74,11 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithGoogle = async () => {
+  // One flow for every popup provider: sign in, then sync the profile with our backend.
+  const loginWithProvider = async (provider) => {
     setAuthError(null);
     try {
-      const credential = await signInWithPopup(auth, googleProvider);
+      const credential = await signInWithPopup(auth, provider);
       await syncWithBackend();
       return credential.user;
     } catch (err) {
@@ -85,6 +86,10 @@ export function AuthProvider({ children }) {
       throw err;
     }
   };
+
+  const loginWithGoogle = () => loginWithProvider(googleProvider);
+  const loginWithApple = () => loginWithProvider(appleProvider);
+  const loginWithMicrosoft = () => loginWithProvider(microsoftProvider);
 
   const resetPassword = async (email) => {
     setAuthError(null);
@@ -111,6 +116,8 @@ export function AuthProvider({ children }) {
     signupWithEmail,
     loginWithEmail,
     loginWithGoogle,
+    loginWithApple,
+    loginWithMicrosoft,
     resetPassword,
     logout,
     isAuthenticated: !!firebaseUser,
@@ -138,7 +145,13 @@ function mapFirebaseError(err) {
     'auth/wrong-password': 'Incorrect email or password.',
     'auth/invalid-credential': 'Incorrect email or password.',
     'auth/too-many-requests': 'Too many attempts. Try again in a few minutes.',
-    'auth/popup-closed-by-user': 'Google sign-in was closed before finishing.',
+    'auth/popup-closed-by-user': 'Sign-in was closed before finishing.',
+    'auth/cancelled-popup-request': 'Sign-in was cancelled. Please try again.',
+    'auth/popup-blocked': 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.',
+    'auth/account-exists-with-different-credential':
+      'An account with this email already exists. Log in with the method you used first (Google, email or another provider).',
+    'auth/operation-not-allowed': 'This sign-in method is not available yet. Please use another option.',
+    'auth/unauthorized-domain': 'This website is not authorised for sign-in. Please contact support.',
     'auth/network-request-failed': 'Network error — check your connection and try again.',
   };
   return map[code] || 'Something went wrong. Please try again.';
