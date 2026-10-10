@@ -13,6 +13,9 @@ import QuizPage from './pages/QuizPage';
 import PredictorListPage from './pages/PredictorListPage';
 import PredictorDetailPage from './pages/PredictorDetailPage';
 import FlashcardsPage from './pages/FlashcardsPage';
+import MockExamPage from './pages/MockExamPage';
+import SharedDeckPage from './pages/SharedDeckPage';
+import AdminPage from './pages/AdminPage';
 
 export default function App() {
   return (
@@ -80,6 +83,25 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/predictor/:id/mock"
+            element={
+              <ProtectedRoute>
+                <MockExamPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Public: a classmate can preview a shared deck before signing up */}
+          <Route path="/shared/:code" element={<SharedDeckPage />} />
 
           <Route path="/" element={<IntroPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
