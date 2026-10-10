@@ -1,10 +1,12 @@
 import Predictor from '../models/Predictor.js';
-import { extractPdfText } from '../services/parser.service.js';
+import { extractPdfWithOcr } from '../services/parser.service.js';
 import {
   predictQuestions,
   extractTextFromImage,
   generateModelPaper,
   generateImportantTopics,
+  evaluateAnswers,
+  analyzeTopicFrequency,
 } from '../services/ai.service.js';
 import { uploadBufferToCloudinary, destroyCloudinaryAsset } from '../middleware/upload.js';
 import { sanitizePattern } from '../utils/pattern.js';
@@ -117,7 +119,7 @@ export async function uploadPastPaper(req, res) {
     let text = '';
     try {
       if (req.file.mimetype === 'application/pdf') {
-        text = (await extractPdfText(req.file.buffer)).text;
+        text = (await extractPdfWithOcr(req.file.buffer)).text;
       } else {
         text = await extractTextFromImage(req.file.buffer.toString('base64'), req.file.mimetype);
       }
@@ -285,5 +287,58 @@ export async function deletePredictor(req, res) {
     return ok(res, null, 'Predictor session deleted');
   } catch (err) {
     return fail(res, 'Failed to delete predictor session', 500);
+  }
+}
+
+// POST /api/predictor/:id/evaluate  { answers: [{ question, answer, marks }] }
+// Used by "check my answer" (1 item) and the timed mock exam (whole paper, 1 AI call).
+export async function evaluatePredictorAnswers(req, res) {
+  try {
+    const predictor = await findOwned(req);
+    if (!predictor) return fail(res, 'Predictor session not found', 404);
+
+    const items = req.body.answers.map((a) => ({
+      question: String(a.question).slice(0, 2000),
+      answer: String(a.answer || '').slice(0, 4000),
+      marks: Number(a.marks),
+    }));
+
+    const results = await evaluateAnswers({ subject: predictor.subject, items });
+    const totalScore = results.reduce((n, r) => n + r.score, 0);
+    const totalMarks = results.reduce((n, r) => n + r.marks, 0);
+
+    return ok(res, { results, totalScore, totalMarks }, 'Answers evaluated');
+  } catch (err) {
+    logger.error('evaluatePredictorAnswers failed:', err);
+    return sendError(res, err, 'Failed to evaluate answers');
+  }
+}
+
+// POST /api/predictor/:id/topic-frequency
+// Which topics keep coming back? Counts, per topic, how many of the uploaded past papers cover it.
+export async function generateTopicFrequency(req, res) {
+  try {
+    const predictor = await findOwned(req, { withText: true });
+    if (!predictor) return fail(res, 'Predictor session not found', 404);
+
+    const papers = predictor.pastPapers
+      .filter((p) => (p.extractedText || '').trim().length > 80)
+      .slice(0, 8)
+      .map((p) => ({ label: `${p.fileName} (${p.stage})`, text: p.extractedText }));
+    if (papers.length === 0) {
+      return fail(res, 'Upload at least one past paper (with readable text) first.', 400);
+    }
+
+    predictor.topicFrequency = await analyzeTopicFrequency({
+      subject: predictor.subject,
+      syllabusText: predictor.syllabusText,
+      papers,
+    });
+    await predictor.save();
+
+    return ok(res, stripPapers(predictor), 'Topic frequency generated');
+  } catch (err) {
+    logger.error('generateTopicFrequency failed:', err);
+    return sendError(res, err, 'Failed to analyse topics');
   }
 }
