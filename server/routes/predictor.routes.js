@@ -16,6 +16,8 @@ import {
   generateModelPaperForSession,
   generateImportantTopicsForSession,
   deletePredictor,
+  evaluatePredictorAnswers,
+  generateTopicFrequency,
 } from '../controllers/predictor.controller.js';
 
 const router = Router();
@@ -55,6 +57,21 @@ router.delete('/:id/papers/:paperId', ...auth, [id, param('paperId').isMongoId()
 
 router.post('/:id/generate', ...auth, aiLimiter, [id], validate, generatePrediction);
 router.post('/:id/model-paper', ...auth, aiLimiter, [id], validate, generateModelPaperForSession);
+router.post(
+  '/:id/evaluate',
+  ...auth,
+  aiLimiter,
+  [
+    id,
+    body('answers').isArray({ min: 1, max: 20 }),
+    body('answers.*.question').isString().isLength({ min: 1, max: 2000 }),
+    body('answers.*.answer').isString().isLength({ max: 4000 }),
+    body('answers.*.marks').isInt({ min: 1, max: 100 }).toInt(),
+  ],
+  validate,
+  evaluatePredictorAnswers
+);
+router.post('/:id/topic-frequency', ...auth, aiLimiter, [id], validate, generateTopicFrequency);
 router.post('/:id/important-topics', ...auth, aiLimiter, [id], validate, generateImportantTopicsForSession);
 
 export default router;
