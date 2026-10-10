@@ -47,3 +47,14 @@ export const uploadLimiter = rateLimit({
   validate: { keyGeneratorIpFallback: false },
   handler: json429('Upload limit reached for this hour. Please try again later.'),
 });
+
+// Feedback form: a few messages per hour per user is plenty.
+export const feedbackLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  keyGenerator: byUser,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { keyGeneratorIpFallback: false },
+  handler: json429('Too many feedback messages. Please try again later.'),
+});
