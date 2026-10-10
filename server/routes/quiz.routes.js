@@ -16,7 +16,11 @@ router.post(
   requireAuth,
   requireUser,
   aiLimiter,
-  [body('documentId').isString().isMongoId()],
+  [
+    body('documentId').isString().isMongoId(),
+    body('count').optional().isInt().toInt().isIn([5, 10, 15]),
+    body('difficulty').optional().isIn(['easy', 'medium', 'hard']),
+  ],
   validate,
   generateQuizForDocument
 );
