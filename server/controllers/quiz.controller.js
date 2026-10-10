@@ -16,7 +16,11 @@ export async function generateQuizForDocument(req, res) {
     if (!doc) return fail(res, 'Document not found', 404);
     if (!doc.extractedText) return fail(res, 'Document has no extracted text yet', 400);
 
-    const questions = await generateQuiz(doc.extractedText);
+    const questions = await generateQuiz(doc.extractedText, {
+      count: req.body.count,
+      difficulty: req.body.difficulty,
+      language: req.user.language,
+    });
 
     const quiz = await Quiz.create({ user: req.user._id, document: doc._id, questions });
 
