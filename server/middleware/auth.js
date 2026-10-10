@@ -41,9 +41,17 @@ export async function requireUser(req, res, next) {
   try {
     const user = await User.findOne({ firebaseUid: req.firebaseUser.uid });
     if (!user) return fail(res, 'User not found. Please sign in again.', 404);
+    if (user.disabled) return fail(res, 'This account has been disabled.', 403);
     req.user = user;
     return next();
   } catch (err) {
     return next(err);
   }
+}
+
+// Use after requireAuth + requireUser. The role lives in MongoDB and is only ever
+// set by the server (ADMIN_EMAILS), never from anything the client sends.
+export function requireAdmin(req, res, next) {
+  if (req.user?.role !== 'admin') return fail(res, 'Admin access required', 403);
+  return next();
 }
