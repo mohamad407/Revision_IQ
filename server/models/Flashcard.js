@@ -3,7 +3,9 @@ import mongoose from 'mongoose';
 const flashcardSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    document: { type: mongoose.Schema.Types.ObjectId, ref: 'Document', required: true },
+    document: { type: mongoose.Schema.Types.ObjectId, ref: 'Document' }, // absent for decks imported from a share link
+    deckName: { type: String, maxlength: 200 }, // label for imported decks
+    sharedFrom: { type: String, index: true }, // share code this card was imported from
     front: { type: String, required: true, maxlength: 600 },
     back: { type: String, required: true, maxlength: 1500 },
     // Spaced-repetition state
