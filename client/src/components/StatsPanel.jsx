@@ -107,12 +107,28 @@ export default function StatsPanel({ stats, onSaveExam }) {
     );
   }
 
-  const { streak, week, flashcards, quizzes, weakDocuments, nextExam, today } = stats;
+  const { streak, week, flashcards, quizzes, weakDocuments, nextExam, today, goal, badges = [] } = stats;
   const max = Math.max(1, ...week.map((d) => d.count));
   const doneToday = today.quizzes + today.cards;
 
+  const goalPct = goal ? Math.min(100, Math.round((goal.cardsToday / goal.dailyGoal) * 100)) : 0;
+  const goalDone = goal && goal.cardsToday >= goal.dailyGoal;
+  const earned = badges.filter((b) => b.earned).length;
+
   return (
     <section className="mt-8" aria-label="Your progress">
+      {goal?.streakAtRisk && (
+        <Link
+          to="/flashcards"
+          className="mb-3 flex items-center justify-between gap-3 rounded-sm border border-highlighter-deep bg-highlighter/15 px-4 py-3 text-sm text-ink"
+        >
+          <span>
+            Your <strong>{streak.current}-day streak</strong> ends tonight. A quick review keeps it alive.
+          </span>
+          <span className="flex-shrink-0 font-mono text-[11px] uppercase tracking-[0.14em]">Review →</span>
+        </Link>
+      )}
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Tile
           title="Study streak"
@@ -132,6 +148,21 @@ export default function StatsPanel({ stats, onSaveExam }) {
         />
         <ExamCard exam={nextExam} onSave={onSaveExam} />
       </div>
+
+      {goal && (
+        <div className="mt-3 rounded-sm border border-paper-line bg-paper-card p-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className={label}>Daily goal</p>
+            <p className="text-xs text-ink-faint">
+              {goalDone ? 'Goal reached — great work!' : `${goal.cardsToday} / ${goal.dailyGoal} flashcards today`}
+            </p>
+          </div>
+          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-paper-line" role="progressbar" aria-valuenow={goalPct} aria-valuemin={0} aria-valuemax={100} aria-label="Daily flashcard goal">
+            <div className={`h-full transition-all ${goalDone ? 'bg-correct' : 'bg-highlighter-deep'}`} style={{ width: `${goalPct}%` }} />
+          </div>
+          <p className="mt-2 text-[11px] text-ink-faint">Change your goal in Profile.</p>
+        </div>
+      )}
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <div className="rounded-sm border border-paper-line bg-paper-card p-4">
@@ -187,6 +218,29 @@ export default function StatsPanel({ stats, onSaveExam }) {
           )}
         </div>
       </div>
+
+      {badges.length > 0 && (
+        <div className="mt-3 rounded-sm border border-paper-line bg-paper-card p-4">
+          <div className="flex items-baseline justify-between">
+            <p className={label}>Badges</p>
+            <p className="text-xs text-ink-faint">{earned} of {badges.length} earned</p>
+          </div>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {badges.map((b) => (
+              <li
+                key={b.id}
+                title={b.desc}
+                className={`rounded-full border px-3 py-1 text-xs ${
+                  b.earned ? 'border-highlighter-deep bg-highlighter/20 text-ink' : 'border-paper-line text-ink-faint opacity-60'
+                }`}
+              >
+                {b.earned ? '★ ' : '☆ '}
+                {b.title}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
