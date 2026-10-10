@@ -11,6 +11,9 @@ import quizRoutes from './routes/quiz.routes.js';
 import predictorRoutes from './routes/predictor.routes.js';
 import flashcardRoutes from './routes/flashcard.routes.js';
 import statsRoutes from './routes/stats.routes.js';
+import sharedRoutes from './routes/shared.routes.js';
+import feedbackRoutes from './routes/feedback.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 import { errorHandler } from './middleware/error.js';
 import { globalLimiter } from './middleware/rateLimit.js';
 
@@ -60,6 +63,9 @@ app.use('/api/quiz', quizRoutes);
 app.use('/api/predictor', predictorRoutes);
 app.use('/api/flashcards', flashcardRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/shared', sharedRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
