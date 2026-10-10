@@ -80,6 +80,14 @@ const predictorSchema = new mongoose.Schema(
       fat: { type: [paperQuestionSchema], default: [] },
     },
 
+    topicFrequency: [
+      {
+        _id: false,
+        topic: String,
+        count: Number, // number of past papers in which the topic appears
+        total: Number, // number of past papers analysed
+      },
+    ],
     importantTopics: { type: [importantTopicSchema], default: [] },
 
     status: {
