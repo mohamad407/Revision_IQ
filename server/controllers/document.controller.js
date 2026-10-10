@@ -1,6 +1,7 @@
 import Document from '../models/Document.js';
 import Flashcard from '../models/Flashcard.js';
 import Quiz from '../models/Quiz.js';
+import Share from '../models/Share.js';
 import { extractPdfWithOcr } from '../services/parser.service.js';
 import { generateSummary, generateStudyTool, chatAnswer } from '../services/ai.service.js';
 import { retrieveChunks } from '../utils/retrieve.js';
@@ -96,6 +97,8 @@ export async function deleteDocument(req, res) {
     await Promise.all([
       Flashcard.deleteMany({ user: req.user._id, document: doc._id }),
       Quiz.deleteMany({ user: req.user._id, document: doc._id }),
+      // A deleted document must stop being reachable through its public share link.
+      Share.deleteMany({ owner: req.user._id, document: doc._id }),
     ]);
     await doc.deleteOne();
 
