@@ -14,7 +14,7 @@ export async function getStats(req, res) {
     const today = dayKey(parseTzOffset(req.headers['x-tz-offset']));
     const since = addDays(today, -364);
 
-    const [activity, quizzes, dueCards, totalCards, documents] = await Promise.all([
+    const [activity, quizzes, dueCards, totalCards, documents, lifetime] = await Promise.all([
       Activity.find({ user: userId, day: { $gte: since } }).select('day quizzes cards -_id'),
       Quiz.find({ user: userId })
         .select('document attempts.score attempts.total')
@@ -23,6 +23,10 @@ export async function getStats(req, res) {
       Flashcard.countDocuments({ user: userId, dueAt: { $lte: new Date() } }),
       Flashcard.countDocuments({ user: userId }),
       Document.countDocuments({ user: userId }),
+      Activity.aggregate([
+        { $match: { user: userId } },
+        { $group: { _id: null, cards: { $sum: '$cards' } } },
+      ]),
     ]);
 
     // Streak
@@ -56,6 +60,22 @@ export async function getStats(req, res) {
       perDoc.set(key, row);
     }
 
+    // Badges: simple milestones computed from data we already have
+    let perfectQuiz = false;
+    for (const q of quizzes) if (q.attempts.some((a) => a.total > 0 && a.score === a.total)) perfectQuiz = true;
+    const cardsReviewed = lifetime[0]?.cards || 0;
+    const badgeDefs = [
+      { id: 'first_upload', title: 'First upload', desc: 'Upload your first document', earned: documents >= 1 },
+      { id: 'first_quiz', title: 'Quiz taker', desc: 'Complete your first quiz', earned: attemptsTotal >= 1 },
+      { id: 'perfect_quiz', title: 'Perfect score', desc: 'Get 100% on a quiz', earned: perfectQuiz },
+      { id: 'quiz_10', title: 'Quiz regular', desc: 'Complete 10 quizzes', earned: attemptsTotal >= 10 },
+      { id: 'streak_3', title: '3-day streak', desc: 'Study 3 days in a row', earned: streak.longest >= 3 },
+      { id: 'streak_7', title: 'Week warrior', desc: 'Study 7 days in a row', earned: streak.longest >= 7 },
+      { id: 'streak_30', title: 'Unstoppable', desc: 'Study 30 days in a row', earned: streak.longest >= 30 },
+      { id: 'cards_100', title: 'Card collector', desc: 'Review 100 flashcards', earned: cardsReviewed >= 100 },
+      { id: 'cards_500', title: 'Memory master', desc: 'Review 500 flashcards', earned: cardsReviewed >= 500 },
+    ];
+
     const weakDocuments = [...perDoc.values()]
       .map((r) => ({ documentId: r.documentId, name: r.name, subject: r.subject, percent: Math.round(r.sum / r.n) }))
       .filter((r) => r.percent < 75)
@@ -71,6 +91,13 @@ export async function getStats(req, res) {
         averagePercent: quizzesAttempted ? Math.round(percentSum / quizzesAttempted) : null,
       },
       weakDocuments,
+      badges: badgeDefs,
+      goal: {
+        dailyGoal: req.user.dailyGoal || 10,
+        cardsToday: todayRow?.cards || 0,
+        // a streak is alive but nothing done today: it breaks at midnight
+        streakAtRisk: streak.current > 0 && !activeDays.includes(today),
+      },
       flashcards: { due: dueCards, total: totalCards },
       documents,
       nextExam: req.user.nextExam?.date ? req.user.nextExam : null,
