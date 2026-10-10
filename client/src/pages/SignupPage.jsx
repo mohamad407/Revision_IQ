@@ -8,7 +8,7 @@ import SocialAuthRow from '../components/SocialAuthRow';
 const initialForm = { name: '', email: '', password: '', confirmPassword: '' };
 
 export default function SignupPage() {
-  const { signupWithEmail, loginWithGoogle, authError, clearError } = useAuth();
+  const { signupWithEmail, loginWithGoogle, loginWithApple, loginWithMicrosoft, authError, clearError } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState(initialForm);
@@ -55,11 +55,12 @@ export default function SignupPage() {
     }
   };
 
-  const handleGoogle = async () => {
+  // Google, Apple and Microsoft all share the same flow.
+  const runSocial = (login) => async () => {
     clearError();
     setSubmitting(true);
     try {
-      await loginWithGoogle();
+      await login();
       navigate('/dashboard', { replace: true });
     } catch {
       // authError is already set by the context
@@ -67,6 +68,9 @@ export default function SignupPage() {
       setSubmitting(false);
     }
   };
+  const handleGoogle = runSocial(loginWithGoogle);
+  const handleApple = runSocial(loginWithApple);
+  const handleMicrosoft = runSocial(loginWithMicrosoft);
 
   return (
     <AuthLayout
@@ -136,7 +140,12 @@ export default function SignupPage() {
         <div className="h-px flex-1 bg-paper-line" />
       </div>
 
-      <SocialAuthRow onGoogleClick={handleGoogle} loading={submitting} />
+      <SocialAuthRow
+        onGoogleClick={handleGoogle}
+        onAppleClick={handleApple}
+        onMicrosoftClick={handleMicrosoft}
+        loading={submitting}
+      />
 
       <p className="mt-8 text-center text-sm text-ink-faint">
         Already have an account?{' '}
