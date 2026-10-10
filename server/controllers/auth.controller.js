@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import { emailFor } from '../utils/identity.js';
 import { ok, fail } from '../utils/response.js';
 import logger from '../utils/logger.js';
 
@@ -19,7 +20,7 @@ export async function loginOrSync(req, res) {
       { firebaseUid: uid },
       {
         $set: set,
-        $setOnInsert: { firebaseUid: uid, email: (email || '').toLowerCase() },
+        $setOnInsert: { firebaseUid: uid, email: emailFor({ email, uid }) },
       },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
