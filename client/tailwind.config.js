@@ -1,25 +1,27 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
       colors: {
+        // Colours come from CSS variables (see index.css) so a `.dark` class can re-theme the app.
         ink: {
-          DEFAULT: '#16213A',
-          soft: '#2A3752',
-          faint: '#5B6885',
+          DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
+          soft: 'rgb(var(--ink-soft) / <alpha-value>)',
+          faint: 'rgb(var(--ink-faint) / <alpha-value>)',
         },
         paper: {
-          DEFAULT: '#F4F6F5',
-          line: '#E1E6E3',
-          card: '#FFFFFF',
+          DEFAULT: 'rgb(var(--paper) / <alpha-value>)',
+          line: 'rgb(var(--paper-line) / <alpha-value>)',
+          card: 'rgb(var(--paper-card) / <alpha-value>)',
         },
         highlighter: {
           DEFAULT: '#FFC94A',
           deep: '#F0A824',
         },
-        correct: '#3E8E7E',
-        flag: '#C4483A',
+        correct: 'rgb(var(--correct) / <alpha-value>)',
+        flag: 'rgb(var(--flag) / <alpha-value>)',
       },
       fontFamily: {
         display: ['"Fraunces"', 'ui-serif', 'Georgia', 'serif'],
@@ -28,7 +30,7 @@ export default {
       },
       backgroundImage: {
         'notebook-lines':
-          'repeating-linear-gradient(to bottom, transparent, transparent 27px, #E1E6E3 28px)',
+          'repeating-linear-gradient(to bottom, transparent, transparent 27px, rgb(var(--paper-line)) 28px)',
       },
     },
   },
