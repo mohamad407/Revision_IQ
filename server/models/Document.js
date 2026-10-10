@@ -7,6 +7,7 @@ const documentSchema = new mongoose.Schema(
     subject: { type: String, trim: true, default: '' },
     cloudinaryUrl: { type: String, required: true, select: false }, // private asset: never sent to clients
     cloudinaryPublicId: { type: String, required: true },
+    ocr: { type: Boolean, default: false }, // true = scanned PDF read with AI vision
     // 'authenticated' for new (private) uploads; 'upload' = legacy public assets
     cloudinaryType: { type: String, enum: ['upload', 'authenticated'], default: 'upload' },
     pages: { type: Number },
@@ -20,6 +21,8 @@ const documentSchema = new mongoose.Schema(
       },
       default: null,
     },
+    // Cached AI study tools: { cheatsheet|simple|example|mnemonics|conceptmap: { language, data, createdAt } }
+    tools: { type: mongoose.Schema.Types.Mixed, default: {}, select: false }, // large: only loaded by the study-tools endpoint
     status: {
       type: String,
       enum: ['processing', 'ready', 'failed'],
