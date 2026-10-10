@@ -1,8 +1,9 @@
 import Document from '../models/Document.js';
 import Flashcard from '../models/Flashcard.js';
 import Quiz from '../models/Quiz.js';
-import { extractPdfText } from '../services/parser.service.js';
-import { generateSummary } from '../services/ai.service.js';
+import { extractPdfWithOcr } from '../services/parser.service.js';
+import { generateSummary, generateStudyTool, chatAnswer } from '../services/ai.service.js';
+import { retrieveChunks } from '../utils/retrieve.js';
 import { uploadBufferToCloudinary, destroyCloudinaryAsset } from '../middleware/upload.js';
 import { sendError } from '../utils/errors.js';
 import { ok, fail } from '../utils/response.js';
@@ -19,8 +20,9 @@ export async function uploadDocument(req, res) {
 
     let parsed;
     try {
-      parsed = await extractPdfText(req.file.buffer);
-    } catch {
+      parsed = await extractPdfWithOcr(req.file.buffer);
+    } catch (err) {
+      if (err.expose) return sendError(res, err); // e.g. AI busy, scan too large, no text
       return fail(res, 'Could not read this PDF. It may be corrupted or password-protected.', 422);
     }
 
@@ -29,7 +31,7 @@ export async function uploadDocument(req, res) {
       mimetype: 'application/pdf',
     });
 
-    const summary = await generateSummary(parsed.text);
+    const summary = await generateSummary(parsed.text, { language: req.user.language });
 
     const doc = await Document.create({
       user: req.user._id,
@@ -40,6 +42,7 @@ export async function uploadDocument(req, res) {
       cloudinaryType: uploaded.type,
       extractedText: parsed.text,
       pages: parsed.pages,
+      ocr: parsed.ocr,
       summary,
       status: 'ready',
     });
@@ -110,7 +113,7 @@ export async function regenerateSummary(req, res) {
     if (!doc) return fail(res, 'Document not found', 404);
     if (!doc.extractedText) return fail(res, 'This document has no readable text (it may be a scanned PDF).', 400);
 
-    doc.summary = await generateSummary(doc.extractedText, { strict: true });
+    doc.summary = await generateSummary(doc.extractedText, { strict: true, language: req.user.language });
     await doc.save();
 
     const safe = doc.toObject();
@@ -119,5 +122,52 @@ export async function regenerateSummary(req, res) {
   } catch (err) {
     logger.error('regenerateSummary failed:', err);
     return sendError(res, err, 'Failed to regenerate summary');
+  }
+}
+
+// POST /api/documents/:id/tools  { tool, force? }
+// cheatsheet | simple | example | mnemonics | conceptmap. Cached per document+language so
+// reopening costs nothing; "force" regenerates.
+export async function runStudyTool(req, res) {
+  try {
+    const { tool, force } = req.body;
+    const language = req.user.language;
+
+    const doc = await Document.findOne({ _id: req.params.id, user: req.user._id }).select('+extractedText +tools');
+    if (!doc) return fail(res, 'Document not found', 404);
+    if (!doc.extractedText) return fail(res, 'This document has no readable text.', 400);
+
+    const cached = doc.tools?.[tool];
+    if (cached && cached.language === language && !force) {
+      return ok(res, { tool, data: cached.data, cached: true }, 'Study tool ready');
+    }
+
+    const data = await generateStudyTool(doc.extractedText, { tool, language });
+    await Document.updateOne(
+      { _id: doc._id },
+      { $set: { [`tools.${tool}`]: { language, data, createdAt: new Date() } } }
+    );
+    return ok(res, { tool, data, cached: false }, 'Study tool ready');
+  } catch (err) {
+    logger.error('runStudyTool failed:', err);
+    return sendError(res, err, 'Failed to generate this study tool');
+  }
+}
+
+// POST /api/documents/:id/chat  { question, history? }
+export async function chatWithDocument(req, res) {
+  try {
+    const doc = await Document.findOne({ _id: req.params.id, user: req.user._id }).select('+extractedText');
+    if (!doc) return fail(res, 'Document not found', 404);
+    if (!doc.extractedText) return fail(res, 'This document has no readable text.', 400);
+
+    const { question, history = [] } = req.body;
+    const context = retrieveChunks(doc.extractedText, `${question} ${history.slice(-2).map((h) => h.text).join(' ')}`);
+
+    const result = await chatAnswer({ question, history, context, language: req.user.language });
+    return ok(res, result, 'Answer ready');
+  } catch (err) {
+    logger.error('chatWithDocument failed:', err);
+    return sendError(res, err, 'Failed to answer');
   }
 }
