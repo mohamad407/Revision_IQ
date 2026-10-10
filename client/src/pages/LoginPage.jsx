@@ -6,7 +6,7 @@ import FormField from '../components/FormField';
 import SocialAuthRow from '../components/SocialAuthRow';
 
 export default function LoginPage() {
-  const { loginWithEmail, loginWithGoogle, authError, clearError } = useAuth();
+  const { loginWithEmail, loginWithGoogle, loginWithApple, loginWithMicrosoft, authError, clearError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location.state?.from?.pathname || '/dashboard';
@@ -47,18 +47,22 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogle = async () => {
+  // Google, Apple and Microsoft all share the same flow.
+  const runSocial = (login) => async () => {
     clearError();
     setSubmitting(true);
     try {
-      await loginWithGoogle();
+      await login();
       navigate(redirectTo, { replace: true });
     } catch {
-      // authError already set by context
+      // authError is already set by the context
     } finally {
       setSubmitting(false);
     }
   };
+  const handleGoogle = runSocial(loginWithGoogle);
+  const handleApple = runSocial(loginWithApple);
+  const handleMicrosoft = runSocial(loginWithMicrosoft);
 
   return (
     <AuthLayout
@@ -117,7 +121,12 @@ export default function LoginPage() {
         <div className="h-px flex-1 bg-paper-line" />
       </div>
 
-      <SocialAuthRow onGoogleClick={handleGoogle} loading={submitting} />
+      <SocialAuthRow
+        onGoogleClick={handleGoogle}
+        onAppleClick={handleApple}
+        onMicrosoftClick={handleMicrosoft}
+        loading={submitting}
+      />
 
       <p className="mt-8 text-center text-sm text-ink-faint">
         New to RevisionIQ?{' '}
