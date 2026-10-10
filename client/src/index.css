@@ -3,11 +3,33 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --ink: 22 33 58;
+    --ink-soft: 42 55 82;
+    --ink-faint: 91 104 133;
+    --paper: 244 246 245;
+    --paper-line: 225 230 227;
+    --paper-card: 255 255 255;
+    --correct: 62 142 126;
+    --flag: 196 72 58;
+    color-scheme: light;
+  }
+  .dark {
+    --ink: 232 236 244;
+    --ink-soft: 201 209 227;
+    --ink-faint: 154 166 192;
+    --paper: 15 21 35;
+    --paper-line: 38 49 74;
+    --paper-card: 23 32 58;
+    --correct: 91 181 163;
+    --flag: 226 106 92;
+    color-scheme: dark;
+  }
   html {
     -webkit-font-smoothing: antialiased;
   }
   :focus-visible {
-    outline: 2px solid #16213a;
+    outline: 2px solid rgb(var(--ink));
     outline-offset: 2px;
   }
 }
@@ -44,7 +66,7 @@
   }
 
   .auth-card {
-    @apply w-full max-w-md rounded-sm border border-paper-line bg-paper-card p-8 sm:p-10 shadow-[0_1px_0_0_#E1E6E3,0_20px_40px_-24px_rgba(22,33,58,0.25)];
+    @apply w-full max-w-md rounded-sm border border-paper-line bg-paper-card p-8 sm:p-10 shadow-[0_1px_0_0_rgb(var(--paper-line)),0_20px_40px_-24px_rgba(22,33,58,0.25)];
   }
 }
 
@@ -116,4 +138,14 @@
   .animate-slide-in, .animate-scene-in, .animate-scan-line {
     animation: none;
   }
+}
+
+
+/* ---- Print: only the element with id="print-area" (e.g. the cheat sheet) is printed ---- */
+@media print {
+  body * { visibility: hidden; }
+  #print-area, #print-area * { visibility: visible; }
+  #print-area { position: absolute; left: 0; top: 0; width: 100%; color: #000 !important; background: #fff !important; }
+  #print-area * { color: #000 !important; border-color: #999 !important; }
+  .no-print { display: none !important; }
 }
